@@ -64,26 +64,40 @@ namespace PrivacyIdeaServer.Lib
             if (!string.IsNullOrEmpty(resolver))
                 data["resolver"] = resolver;
 
-            var client = _httpClientFactory.CreateClient();
-            
-            // Configure TLS/SSL validation
-            if (!_config.Tls)
-            {
-                var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                };
-                client = new HttpClient(handler);
-            }
-
-            client.Timeout = TimeSpan.FromSeconds(60);
-
+            var client = CreateHttpClient(_httpClientFactory, _config.Tls);
             var content = new FormUrlEncodedContent(data);
             var url = $"{_config.Url.TrimEnd('/')}/validate/check";
             
             var response = await client.PostAsync(url, content);
             
             return response;
+        }
+
+        /// <summary>
+        /// Create an HttpClient with appropriate TLS settings
+        /// </summary>
+        private static HttpClient CreateHttpClient(IHttpClientFactory factory, bool validateTls)
+        {
+            if (validateTls)
+            {
+                // Use the factory-created client with default settings
+                var client = factory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(60);
+                return client;
+            }
+            else
+            {
+                // Create a client with custom handler that skips certificate validation
+                var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                };
+                var client = new HttpClient(handler)
+                {
+                    Timeout = TimeSpan.FromSeconds(60)
+                };
+                return client;
+            }
         }
 
         /// <summary>
@@ -110,20 +124,7 @@ namespace PrivacyIdeaServer.Lib
                     ["pass"] = HttpUtility.UrlEncode(password)
                 };
 
-                var client = httpClientFactory.CreateClient();
-                
-                // Configure TLS/SSL validation
-                if (!config.Tls)
-                {
-                    var handler = new HttpClientHandler
-                    {
-                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                    };
-                    client = new HttpClient(handler);
-                }
-
-                client.Timeout = TimeSpan.FromSeconds(60);
-
+                var client = CreateHttpClient(httpClientFactory, config.Tls);
                 var content = new FormUrlEncodedContent(data);
                 var url = $"{config.Url.TrimEnd('/')}/validate/check";
                 

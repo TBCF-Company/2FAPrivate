@@ -46,7 +46,18 @@ namespace PrivacyIdeaServer.Controllers
         {
             try
             {
+                // Validate and sanitize identifier
                 identifier = identifier.Replace(" ", "_");
+                
+                // Ensure identifier only contains safe characters (alphanumeric, dash, underscore)
+                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^[a-zA-Z0-9_-]+$"))
+                {
+                    return BadRequest(new
+                    {
+                        result = new { status = false, value = false },
+                        detail = new { message = "Identifier can only contain letters, numbers, dashes, and underscores" }
+                    });
+                }
                 
                 if (string.IsNullOrEmpty(request.Url))
                 {

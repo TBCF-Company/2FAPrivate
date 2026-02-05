@@ -12,15 +12,18 @@ namespace PrivacyIdeaServer.Lib
         private readonly PrivacyIDEAContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<PrivacyIDEAServerService> _logger;
+        private readonly ILoggerFactory _loggerFactory;
 
         public PrivacyIDEAServerService(
             PrivacyIDEAContext context,
             IHttpClientFactory httpClientFactory,
-            ILogger<PrivacyIDEAServerService> logger)
+            ILogger<PrivacyIDEAServerService> logger,
+            ILoggerFactory loggerFactory)
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -92,8 +95,7 @@ namespace PrivacyIdeaServer.Lib
             
             foreach (var serverDb in servers)
             {
-                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-                var logger = loggerFactory.CreateLogger<PrivacyIDEAServer>();
+                var logger = _loggerFactory.CreateLogger<PrivacyIDEAServer>();
                 res.Add(new PrivacyIDEAServer(serverDb, _httpClientFactory, logger));
             }
             
