@@ -1,0 +1,29 @@
+@use "../../../../styles";
+@use "@angular/material" as mat;
+
+.details-container {
+  display: grid;
+  border-radius: var(--border-radius);
+  @include mat.elevation(5);
+  background-color: var(--table-color);
+  padding: var(--global-padding);
+  max-height: var(--max-height);
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  .mat-mdc-select-value-text {
+    font-size: 14px;
+  }
+
+  .mdc-list-item.mdc-list-item--with-one-line {
+    // height: auto;
+  }
+}
+
+.container-form-field {
+  margin-bottom: -1.25em;
+}
+
+.token-serial {
+  color: var(--mat-sys-primary);
+}

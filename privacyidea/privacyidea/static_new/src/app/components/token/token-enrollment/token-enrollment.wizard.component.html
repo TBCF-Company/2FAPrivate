@@ -1,0 +1,216 @@
+<!--
+ (c) NetKnights GmbH 2025,  https://netknights.it
+
+ This code is free software; you can redistribute it and/or
+ modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
+ as published by the Free Software Foundation; either
+ version 3 of the License, or any later version.
+
+ This code is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU AFFERO GENERAL PUBLIC LICENSE for more details.
+
+ You should have received a copy of the GNU Affero General Public
+ License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<div
+  appScrollToTop
+  aria-label="Token Enrollment"
+  class="token-enrollment-container"
+  i18n-aria-label>
+  @let preTopHtml = preTopHtml$ | async;
+  @if (preTopHtml?.hasContent) {
+    <div
+      [innerHTML]="preTopHtml?.sanitized"
+      class="margin-top-1"></div>
+  } @else {
+    <h2>Enroll {{ tokenType().name }} Token</h2>
+  }
+  <form
+    (ngSubmit)="enrollToken()"
+    [formGroup]="formGroupSignal()">
+    <div class="enroll-button-container margin-bottom-1">
+      <button
+        [disabled]="formGroupSignal().invalid"
+        class="action-button-1 width-238"
+        mat-stroked-button
+        type="submit">
+        <mat-icon>add</mat-icon>
+        Enroll
+      </button>
+      <button
+        (click)="reopenEnrollmentDialog()"
+        [matTooltip]="'Reopen enrollment dialog'"
+        [ngClass]="{ hidden: !canReopenEnrollmentDialog() }"
+        mat-icon-button
+        type="button">
+        <mat-icon>open_in_new</mat-icon>
+      </button>
+    </div>
+    @switch (authService.defaultTokentype() || "hotp") {
+      @case ("hotp") {
+        <app-enroll-hotp
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("totp") {
+        <app-enroll-totp
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("spass") {
+        <app-enroll-spass
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("motp") {
+        <app-enroll-motp
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("sshkey") {
+        <app-enroll-sshkey
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("yubikey") {
+        <app-enroll-yubikey
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("remote") {
+        <app-enroll-remote
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("yubico") {
+        <app-enroll-yubico
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("radius") {
+        <app-enroll-radius
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("sms") {
+        <app-enroll-sms
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("4eyes") {
+        <app-enroll-foureyes
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("applspec") {
+        <app-enroll-applspec
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("daypassword") {
+        <app-enroll-daypassword
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("certificate") {
+        <app-enroll-certificate
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("email") {
+        <app-enroll-email
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("indexedsecret") {
+        <app-enroll-indexedsecret
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("paper") {
+        <app-enroll-paper
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("push") {
+        <app-enroll-push
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)"
+          (reopenDialogChange)="updateReopenDialog($event)" />
+      }
+      @case ("question") {
+        <app-enroll-question
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("registration") {
+        <app-enroll-registration
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("tan") {
+        <app-enroll-tan
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("tiqr") {
+        <app-enroll-tiqr
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("u2f") {
+        <app-enroll-u2f
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("vasco") {
+        <app-enroll-vasco
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("webauthn") {
+        <app-enroll-webauthn
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)" />
+      }
+      @case ("passkey") {
+        <app-enroll-passkey
+          [wizard]="wizard"
+          (additionalFormFieldsChange)="updateAdditionalFormFields($event)"
+          (enrollmentArgsGetterChange)="updateEnrollmentArgsGetter($event)"
+          (reopenDialogChange)="updateReopenDialog($event)" />
+      }
+    }
+    @if (authService.requireDescription().includes(tokenType().key)) {
+      <mat-form-field class="description-form">
+        <mat-label>Description</mat-label>
+        <textarea
+          [formControl]="descriptionControl"
+          [maxlength]="80"
+          matInput
+          placeholder="Enter description"
+          rows="3"></textarea>
+      </mat-form-field>
+    }
+  </form>
+  <div
+    [innerHTML]="preBottomHtml$ | async"
+    class="margin-bottom-1"></div>
+</div>

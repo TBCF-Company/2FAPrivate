@@ -1,0 +1,153 @@
+/**
+ * (c) NetKnights GmbH 2025,  https://netknights.it
+ *
+ * This code is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
+ * as published by the Free Software Foundation; either
+ * version 3 of the License, or any later version.
+ *
+ * This code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ **/
+import { Component, effect, EventEmitter, inject, input, OnInit, Output } from "@angular/core";
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from "@angular/forms";
+import { MatCheckbox } from "@angular/material/checkbox";
+import { ErrorStateMatcher, MatOption } from "@angular/material/core";
+import { MatFormField, MatLabel } from "@angular/material/form-field";
+import { MatInput } from "@angular/material/input";
+import { MatError, MatSelect } from "@angular/material/select";
+import {
+  PrivacyideaServerService,
+  PrivacyideaServerServiceInterface,
+  RemoteServer
+} from "../../../../services/privavyidea-server/privacyidea-server.service";
+import { TokenService, TokenServiceInterface } from "../../../../services/token/token.service";
+
+import {
+  RemoteApiPayloadMapper,
+  RemoteEnrollmentData
+} from "../../../../mappers/token-api-payload/remote-token-api-payload.mapper";
+import {
+  TokenApiPayloadMapper,
+  TokenEnrollmentData
+} from "../../../../mappers/token-api-payload/_token-api-payload.mapper";
+
+export class RemoteErrorStateMatcher implements ErrorStateMatcher {
+  isErrorState(control: FormControl | null): boolean {
+    const invalid = control && control.value ? control.value.id === "" : true;
+    return !!(control && invalid && (control.dirty || control.touched));
+  }
+}
+
+@Component({
+  selector: "app-enroll-remote",
+  standalone: true,
+  imports: [
+    MatFormField,
+    MatInput,
+    MatLabel,
+    ReactiveFormsModule,
+    FormsModule,
+    MatOption,
+    MatSelect,
+    MatCheckbox,
+    MatError
+  ],
+  templateUrl: "./enroll-remote.component.html",
+  styleUrl: "./enroll-remote.component.scss"
+})
+export class EnrollRemoteComponent implements OnInit {
+  protected readonly enrollmentMapper: RemoteApiPayloadMapper = inject(RemoteApiPayloadMapper);
+  protected readonly privacyideaServerService: PrivacyideaServerServiceInterface = inject(PrivacyideaServerService);
+  protected readonly tokenService: TokenServiceInterface = inject(TokenService);
+
+  @Output() additionalFormFieldsChange = new EventEmitter<{
+    [key: string]: FormControl<any>;
+  }>();
+  @Output() enrollmentArgsGetterChange = new EventEmitter<
+    (basicOptions: TokenEnrollmentData) => {
+      data: RemoteEnrollmentData;
+      mapper: TokenApiPayloadMapper<RemoteEnrollmentData>;
+    } | null
+  >();
+  disabled = input<boolean>(false);
+
+  checkPinLocallyControl = new FormControl<boolean>(false, [Validators.required]);
+  remoteServerControl = new FormControl<RemoteServer | null>(null, [Validators.required]);
+  remoteSerialControl = new FormControl<string>("");
+  remoteUserControl = new FormControl<string>("");
+  remoteRealmControl = new FormControl<string>("");
+  remoteResolverControl = new FormControl<string>("");
+
+  remoteForm = new FormGroup({
+    checkPinLocally: this.checkPinLocallyControl,
+    remoteServer: this.remoteServerControl,
+    remoteSerial: this.remoteSerialControl,
+    remoteUser: this.remoteUserControl,
+    remoteRealm: this.remoteRealmControl,
+    remoteResolver: this.remoteResolverControl
+  });
+
+  remoteServerOptions = this.privacyideaServerService.remoteServerOptions;
+  remoteErrorStateMatcher = new RemoteErrorStateMatcher();
+
+  constructor() {
+    effect(() =>
+      this.disabled() ? this.remoteForm.disable({ emitEvent: false }) : this.remoteForm.enable({ emitEvent: false })
+    );
+  }
+
+  ngOnInit(): void {
+    this.additionalFormFieldsChange.emit({
+      checkPinLocally: this.checkPinLocallyControl,
+      remoteServer: this.remoteServerControl,
+      remoteSerial: this.remoteSerialControl,
+      remoteUser: this.remoteUserControl,
+      remoteRealm: this.remoteRealmControl,
+      remoteResolver: this.remoteResolverControl
+    });
+    this.enrollmentArgsGetterChange.emit(this.enrollmentArgsGetter);
+  }
+
+  enrollmentArgsGetter = (
+    basicOptions: TokenEnrollmentData
+  ): {
+    data: RemoteEnrollmentData;
+    mapper: TokenApiPayloadMapper<RemoteEnrollmentData>;
+  } | null => {
+    if (
+      this.remoteServerControl.invalid ||
+      this.remoteSerialControl.invalid ||
+      this.remoteUserControl.invalid ||
+      this.remoteRealmControl.invalid ||
+      this.remoteResolverControl.invalid ||
+      this.checkPinLocallyControl.invalid
+    ) {
+      this.remoteForm.markAllAsTouched();
+      return null;
+    }
+
+    const enrollmentData: RemoteEnrollmentData = {
+      ...basicOptions,
+      type: "remote",
+      checkPinLocally: !!this.checkPinLocallyControl.value,
+      remoteServer: this.remoteServerControl.value,
+      remoteSerial: this.remoteSerialControl.value ?? "",
+      remoteUser: this.remoteUserControl.value ?? "",
+      remoteRealm: this.remoteRealmControl.value ?? "",
+      remoteResolver: this.remoteResolverControl.value ?? ""
+    };
+
+    return {
+      data: enrollmentData,
+      mapper: this.enrollmentMapper
+    };
+  };
+}
