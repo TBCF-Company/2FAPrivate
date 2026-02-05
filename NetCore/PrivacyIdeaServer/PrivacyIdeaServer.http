@@ -1,6 +1,64 @@
-@PrivacyIdeaServer_HostAddress = http://localhost:5092
+@PrivacyIdeaServer_HostAddress = http://localhost:5000
 
-GET {{PrivacyIdeaServer_HostAddress}}/weatherforecast/
+### Get application info
+GET {{PrivacyIdeaServer_HostAddress}}/info
 Accept: application/json
 
 ###
+
+### Get health status
+GET {{PrivacyIdeaServer_HostAddress}}/healthz
+Accept: application/json
+
+###
+
+### List all privacyIDEA servers
+GET {{PrivacyIdeaServer_HostAddress}}/privacyideaserver
+Accept: application/json
+
+###
+
+### Create a new privacyIDEA server
+POST {{PrivacyIdeaServer_HostAddress}}/privacyideaserver/my-server
+Content-Type: application/json
+
+{
+  "url": "https://privacyidea.example.com",
+  "tls": true,
+  "description": "Main authentication server"
+}
+
+###
+
+### Update an existing privacyIDEA server
+POST {{PrivacyIdeaServer_HostAddress}}/privacyideaserver/my-server
+Content-Type: application/json
+
+{
+  "url": "https://privacyidea.example.com",
+  "tls": false,
+  "description": "Updated authentication server"
+}
+
+###
+
+### Test server connection
+POST {{PrivacyIdeaServer_HostAddress}}/privacyideaserver/test_request
+Content-Type: application/json
+
+{
+  "identifier": "my-server",
+  "url": "https://privacyidea.example.com",
+  "tls": true,
+  "username": "testuser",
+  "password": "123456"
+}
+
+###
+
+### Delete a privacyIDEA server
+DELETE {{PrivacyIdeaServer_HostAddress}}/privacyideaserver/my-server
+Accept: application/json
+
+###
+
