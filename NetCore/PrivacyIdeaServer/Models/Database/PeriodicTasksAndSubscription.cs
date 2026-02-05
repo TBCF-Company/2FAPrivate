@@ -115,11 +115,15 @@ namespace PrivacyIdeaServer.Models.Database
     }
 
     /// <summary>
-    /// Client application registrations for subscription management
+    /// Client application tracking for authentication requests
+    /// Stores clients that sent authentication requests to privacyIDEA
     /// Equivalent to Python's ClientApplication class
     /// </summary>
     [Table("clientapplication")]
-    [Index(nameof(ClientId), IsUnique = true)]
+    [Index(nameof(Ip), nameof(ClientType), nameof(Node), IsUnique = true, Name = "caix")]
+    [Index(nameof(Ip))]
+    [Index(nameof(ClientType))]
+    [Index(nameof(LastSeen))]
     public class ClientApplication : IMethodsMixin
     {
         [Key]
@@ -130,31 +134,32 @@ namespace PrivacyIdeaServer.Models.Database
 
         [Required]
         [StringLength(255)]
-        public string ClientId { get; set; } = string.Empty;
-
-        [StringLength(255)]
-        public string? Name { get; set; }
-
-        [StringLength(255)]
-        public string? Ip { get; set; }
+        public string Ip { get; set; } = string.Empty;
 
         [StringLength(255)]
         public string? Hostname { get; set; }
 
-        [StringLength(36)]
-        public string? NodeUuid { get; set; }
+        [Required]
+        [StringLength(255)]
+        public string ClientType { get; set; } = string.Empty;
 
         public DateTime? LastSeen { get; set; }
 
+        [Required]
+        [StringLength(255)]
+        public string Node { get; set; } = string.Empty;
+
         public ClientApplication()
         {
+            LastSeen = DateTime.UtcNow;
         }
 
-        public ClientApplication(string clientId, string? name = null, string? ip = null)
+        public ClientApplication(string ip, string clientType, string node, string? hostname = null)
         {
-            ClientId = clientId;
-            Name = name;
             Ip = ip;
+            ClientType = clientType;
+            Node = node;
+            Hostname = hostname;
             LastSeen = DateTime.UtcNow;
         }
     }
