@@ -196,10 +196,21 @@ namespace PrivacyIdeaServer.Lib.Crypto
         /// </summary>
         private static byte[] GetDefaultKey()
         {
-            // TODO: Implement proper key management with HSM or secure key storage
-            // This is a placeholder and should be replaced with actual key management
-            using var sha = SHA256.Create();
-            return sha.ComputeHash(Encoding.UTF8.GetBytes("privacyidea-default-key-change-me"));
+            // SECURITY WARNING: This is a development placeholder only!
+            // In production, this should:
+            // 1. Retrieve key from secure key storage (Azure Key Vault, AWS KMS, etc.)
+            // 2. Integrate with HSM (Hardware Security Module)
+            // 3. Use configuration-based key management
+            
+            throw new InvalidOperationException(
+                "Default encryption key is not configured. " +
+                "Please configure encryption keys using a secure key management system " +
+                "(Azure Key Vault, AWS KMS, HSM, or appsettings with proper protection). " +
+                "This is a security requirement and cannot use default keys in production.");
+            
+            // For development/testing only, you can uncomment this (but NEVER in production):
+            // using var sha = SHA256.Create();
+            // return sha.ComputeHash(Encoding.UTF8.GetBytes("privacyidea-default-key-DEVELOPMENT-ONLY"));
         }
 
         /// <summary>

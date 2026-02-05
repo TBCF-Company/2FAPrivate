@@ -30,10 +30,10 @@ namespace PrivacyIdeaServer.Models.Database
         public string Serial { get; set; } = string.Empty;
 
         [StringLength(64)]
-        public string? Type { get; set; } = string.Empty;
+        public string? Type { get; set; }
 
         [StringLength(200)]
-        public string? Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         // Navigation properties
         public ICollection<TokenContainerInfo> InfoList { get; set; } = new List<TokenContainerInfo>();

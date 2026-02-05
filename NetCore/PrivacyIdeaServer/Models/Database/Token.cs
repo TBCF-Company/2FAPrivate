@@ -63,41 +63,41 @@ namespace PrivacyIdeaServer.Models.Database
         int? IMethodsMixin.Id => Id;
 
         [StringLength(80)]
-        public string? Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         [Required]
         [StringLength(40)]
         public string Serial { get; set; } = string.Empty;
 
         [StringLength(30)]
-        public string? TokenType { get; set; } = "HOTP";
+        public string? TokenType { get; set; }
 
         /// <summary>
         /// Encrypted user PIN
         /// </summary>
         [StringLength(512)]
-        public string? UserPin { get; set; } = string.Empty;
+        public string? UserPin { get; set; }
 
         /// <summary>
         /// IV for user PIN encryption
         /// </summary>
         [StringLength(32)]
-        public string? UserPinIv { get; set; } = string.Empty;
+        public string? UserPinIv { get; set; }
 
         /// <summary>
         /// Encrypted Security Officer PIN (for smartcards)
         /// </summary>
         [StringLength(512)]
-        public string? SoPin { get; set; } = string.Empty;
+        public string? SoPin { get; set; }
 
         /// <summary>
         /// IV for SO PIN encryption
         /// </summary>
         [StringLength(32)]
-        public string? SoPinIv { get; set; } = string.Empty;
+        public string? SoPinIv { get; set; }
 
         [StringLength(32)]
-        public string? PinSeed { get; set; } = string.Empty;
+        public string? PinSeed { get; set; }
 
         public int OtpLen { get; set; } = 6;
 
@@ -105,19 +105,19 @@ namespace PrivacyIdeaServer.Models.Database
         /// Hashed PIN value
         /// </summary>
         [StringLength(512)]
-        public string? PinHash { get; set; } = string.Empty;
+        public string? PinHash { get; set; }
 
         /// <summary>
         /// Encrypted OTP key
         /// </summary>
         [StringLength(2800)]
-        public string? KeyEnc { get; set; } = string.Empty;
+        public string? KeyEnc { get; set; }
 
         /// <summary>
         /// IV for key encryption
         /// </summary>
         [StringLength(32)]
-        public string? KeyIv { get; set; } = string.Empty;
+        public string? KeyIv { get; set; }
 
         public int MaxFail { get; set; } = 10;
 
@@ -136,7 +136,7 @@ namespace PrivacyIdeaServer.Models.Database
         public int SyncWindow { get; set; } = 1000;
 
         [StringLength(10)]
-        public string? RolloutState { get; set; } = string.Empty;
+        public string? RolloutState { get; set; }
 
         // Navigation properties
         public ICollection<TokenInfo> InfoList { get; set; } = new List<TokenInfo>();
@@ -153,7 +153,7 @@ namespace PrivacyIdeaServer.Models.Database
         public Token(string serial, string tokenType = "", bool isActive = true, int otpLen = 6, string otpKey = "")
         {
             Serial = serial;
-            TokenType = tokenType;
+            TokenType = string.IsNullOrEmpty(tokenType) ? "HOTP" : tokenType;
             Active = isActive;
             OtpLen = otpLen;
             Count = 0;
@@ -162,7 +162,6 @@ namespace PrivacyIdeaServer.Models.Database
             Revoked = false;
             Locked = false;
             CountWindow = 10;
-            PinSeed = string.Empty;
             // Note: Set OTP key using SetOtpKey method which handles encryption
         }
     }
@@ -236,10 +235,10 @@ namespace PrivacyIdeaServer.Models.Database
         public int? RealmId { get; set; }
 
         [StringLength(320)]
-        public string? Resolver { get; set; } = string.Empty;
+        public string? Resolver { get; set; }
 
         [StringLength(320)]
-        public string? UserId { get; set; } = string.Empty;
+        public string? UserId { get; set; }
 
         // Navigation properties
         public Token? Token { get; set; }
@@ -253,8 +252,8 @@ namespace PrivacyIdeaServer.Models.Database
         {
             TokenId = tokenId;
             RealmId = realmId;
-            Resolver = resolver ?? string.Empty;
-            UserId = userId ?? string.Empty;
+            Resolver = resolver;
+            UserId = userId;
         }
     }
 
