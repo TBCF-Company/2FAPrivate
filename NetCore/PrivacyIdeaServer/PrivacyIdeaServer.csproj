@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.23" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.69.0" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
@@ -22,6 +23,8 @@
     <PackageReference Include="Novell.Directory.Ldap.NETStandard" Version="3.6.0" />
     <!-- For RADIUS support (future) -->
     <PackageReference Include="Flexinets.Radius.Core" Version="2.1.1" />
+    <PackageReference Include="System.Net.Http.Json" Version="8.0.2" />
+    <PackageReference Include="YamlDotNet" Version="15.1.6" />
   </ItemGroup>
 
 </Project>
