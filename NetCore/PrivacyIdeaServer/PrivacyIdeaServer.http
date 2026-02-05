@@ -1,0 +1,6 @@
+@PrivacyIdeaServer_HostAddress = http://localhost:5092
+
+GET {{PrivacyIdeaServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
