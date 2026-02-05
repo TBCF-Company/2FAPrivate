@@ -76,7 +76,7 @@ namespace PrivacyIdeaServer.Models
         public DbSet<SMSGatewayOption> SMSGatewayOptions { get; set; } = null!;
 
         // Event handling
-        public DbSet<EventHandler> EventHandlers { get; set; } = null!;
+        public DbSet<Database.EventHandler> EventHandlers { get; set; } = null!;
         public DbSet<EventHandlerOption> EventHandlerOptions { get; set; } = null!;
         public DbSet<EventHandlerCondition> EventHandlerConditions { get; set; } = null!;
         public DbSet<EventCounter> EventCounters { get; set; } = null!;

@@ -9,6 +9,7 @@
 // Converted from Python to C# from privacyidea/models/utils.py
 
 using System;
+using System.Threading.Tasks;
 
 namespace PrivacyIdeaServer.Models.Database
 {
@@ -47,7 +48,7 @@ namespace PrivacyIdeaServer.Models.Database
         /// Save the entity to the database
         /// Returns the entity ID if it has one
         /// </summary>
-        public static async Task<int?> SaveAsync<T>(this T entity, PrivacyIdeaContext context) 
+        public static async Task<int?> SaveAsync<T>(this T entity, PrivacyIdeaServer.Models.PrivacyIDEAContext context) 
             where T : class, IMethodsMixin
         {
             context.Set<T>().Update(entity);
@@ -59,7 +60,7 @@ namespace PrivacyIdeaServer.Models.Database
         /// Delete the entity from the database
         /// Returns the entity ID if it had one
         /// </summary>
-        public static async Task<int?> DeleteAsync<T>(this T entity, PrivacyIdeaContext context) 
+        public static async Task<int?> DeleteAsync<T>(this T entity, PrivacyIdeaServer.Models.PrivacyIDEAContext context) 
             where T : class, IMethodsMixin
         {
             var id = entity.Id;
