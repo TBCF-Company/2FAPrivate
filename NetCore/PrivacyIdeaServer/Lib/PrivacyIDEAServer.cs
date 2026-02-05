@@ -78,26 +78,21 @@ namespace PrivacyIdeaServer.Lib
         /// </summary>
         private static HttpClient CreateHttpClient(IHttpClientFactory factory, bool validateTls)
         {
+            HttpClient client;
+            
             if (validateTls)
             {
-                // Use the factory-created client with default settings
-                var client = factory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(60);
-                return client;
+                // Use the default client with TLS validation
+                client = factory.CreateClient();
             }
             else
             {
-                // Create a client with custom handler that skips certificate validation
-                var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                };
-                var client = new HttpClient(handler)
-                {
-                    Timeout = TimeSpan.FromSeconds(60)
-                };
-                return client;
+                // Use the named client configured to skip TLS validation
+                client = factory.CreateClient("NoTlsValidation");
             }
+            
+            client.Timeout = TimeSpan.FromSeconds(60);
+            return client;
         }
 
         /// <summary>

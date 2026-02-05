@@ -6,6 +6,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PrivacyIdeaServer.Lib;
 using PrivacyIdeaServer.Models;
+using System.Text.RegularExpressions;
 
 namespace PrivacyIdeaServer.Controllers
 {
@@ -17,11 +18,15 @@ namespace PrivacyIdeaServer.Controllers
     /// </summary>
     [ApiController]
     [Route("privacyideaserver")]
-    public class PrivacyIDEAServerController : ControllerBase
+    public partial class PrivacyIDEAServerController : ControllerBase
     {
         private readonly IPrivacyIDEAServerService _serverService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<PrivacyIDEAServerController> _logger;
+
+        // Use source-generated regex for better performance
+        [GeneratedRegex(@"^[a-zA-Z0-9_-]+$")]
+        private static partial Regex IdentifierValidationRegex();
 
         public PrivacyIDEAServerController(
             IPrivacyIDEAServerService serverService,
@@ -50,7 +55,7 @@ namespace PrivacyIdeaServer.Controllers
                 identifier = identifier.Replace(" ", "_");
                 
                 // Ensure identifier only contains safe characters (alphanumeric, dash, underscore)
-                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^[a-zA-Z0-9_-]+$"))
+                if (!IdentifierValidationRegex().IsMatch(identifier))
                 {
                     return BadRequest(new
                     {

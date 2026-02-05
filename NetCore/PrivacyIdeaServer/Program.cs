@@ -22,6 +22,13 @@ builder.Services.AddDbContext<PrivacyIDEAContext>(options =>
 // Add HTTP client for making requests to remote privacyIDEA servers
 builder.Services.AddHttpClient();
 
+// Add named HttpClient for servers that don't validate TLS
+builder.Services.AddHttpClient("NoTlsValidation")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    });
+
 // Register services
 builder.Services.AddScoped<IPrivacyIDEAServerService, PrivacyIDEAServerService>();
 
