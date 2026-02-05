@@ -43,7 +43,7 @@ namespace PrivacyIdeaServer.Lib.Authentication
             var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
             {
                 DegreeOfParallelism = 8,
-                MemorySize = 65536, // 64 MB
+                MemorySize = 65536, // 65536 KB (64 MB)
                 Iterations = Argon2Rounds,
                 Salt = GenerateSalt()
             };
@@ -252,6 +252,13 @@ namespace PrivacyIdeaServer.Lib.Authentication
         /// <summary>
         /// Verify if credentials are cached and valid
         /// Equivalent to Python's verify_in_cache function
+        /// 
+        /// NOTE: There is a potential race condition between checking auth_count and updating it.
+        /// In high-concurrency scenarios, multiple requests could verify the same cache entry
+        /// simultaneously when auth_count is near maxAuths. Consider implementing:
+        /// 1. Database-level optimistic concurrency (RowVersion/Timestamp column)
+        /// 2. SELECT FOR UPDATE with transactions (not available in all EF Core providers)
+        /// 3. Application-level distributed locking (Redis, etc.)
         /// </summary>
         /// <param name="username">Username</param>
         /// <param name="realm">Realm</param>

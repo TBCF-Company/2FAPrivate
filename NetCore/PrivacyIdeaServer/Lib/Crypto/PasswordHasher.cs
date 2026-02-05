@@ -40,10 +40,17 @@ namespace PrivacyIdeaServer.Lib.Crypto
                 return _cachedPepper;
             }
 
-            // Try to get from configuration, fallback to "missing" (matches Python behavior)
+            // Try to get from configuration or environment variable
             _cachedPepper = _configuration?["PI_PEPPER"] 
-                ?? Environment.GetEnvironmentVariable("PI_PEPPER") 
-                ?? "missing";
+                ?? Environment.GetEnvironmentVariable("PI_PEPPER");
+
+            // Security: Throw if pepper is not configured (don't use default)
+            if (string.IsNullOrEmpty(_cachedPepper))
+            {
+                throw new InvalidOperationException(
+                    "PI_PEPPER is not configured. Please set PI_PEPPER in appsettings.json " +
+                    "or as an environment variable. This is required for secure password hashing.");
+            }
 
             return _cachedPepper;
         }

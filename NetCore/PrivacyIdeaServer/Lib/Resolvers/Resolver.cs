@@ -133,7 +133,7 @@ namespace PrivacyIdeaServer.Lib.Resolvers
             if (updateResolver)
             {
                 var resolver = await _context.Resolvers
-                    .FirstOrDefaultAsync(r => r.Name.ToLower() == resolverName.ToLower());
+                    .FirstOrDefaultAsync(r => r.Name == resolverName);
                 
                 if (resolver == null)
                 {
@@ -296,7 +296,7 @@ namespace PrivacyIdeaServer.Lib.Resolvers
                     var value = config.Value ?? string.Empty;
                     
                     // Deserialize JSON dictionaries
-                    if (config.Type == "dict_with_password" || value.StartsWith("{"))
+                    if (config.Type == "dict_with_password" || (!string.IsNullOrEmpty(value) && value.StartsWith("{")))
                     {
                         try
                         {
@@ -625,9 +625,25 @@ namespace PrivacyIdeaServer.Lib.Resolvers
 
         private string EncryptPassword(string password)
         {
-            // TODO: Implement proper password encryption using crypto library
-            // For now, use a placeholder that calls the crypto module
-            return CryptoFunctions.Encrypt(password, CryptoFunctions.GetUrandom(16));
+            // TODO: SECURITY CRITICAL - Implement proper password encryption
+            // Current implementation uses random IV which makes password irrecoverable
+            // 
+            // Required: Use a master encryption key from secure storage:
+            // - Azure Key Vault
+            // - AWS KMS
+            // - Hardware Security Module (HSM)
+            // 
+            // The encryption key must be:
+            // 1. Stored securely (never in code or config files)
+            // 2. Retrievable for decryption
+            // 3. Rotatable without losing access to old passwords
+            //
+            // For now, returning plaintext with warning log
+            _logger.LogWarning("Password encryption not implemented - storing in plaintext (DEVELOPMENT ONLY)");
+            return password;
+            
+            // When implemented:
+            // return CryptoFunctions.Encrypt(password, CryptoFunctions.GetUrandom(16), masterKey);
         }
 
         private bool IsTrue(string? value)

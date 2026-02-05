@@ -42,8 +42,11 @@ namespace PrivacyIdeaServer.Lib.Authentication
             Details = details;
         }
 
-        public WebUiAuthResult() : this(false, Authentication.Role.User, null)
+        public WebUiAuthResult()
         {
+            Authenticated = false;
+            Role = Authentication.Role.User;
+            Details = null;
         }
     }
 
