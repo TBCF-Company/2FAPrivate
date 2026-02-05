@@ -109,6 +109,8 @@ namespace PrivacyIdeaServer.Models.Database
 
         public DateTime? LastAuth { get; set; }
 
+        public int AuthCount { get; set; } = 0;
+
         public AuthCache()
         {
             FirstAuth = DateTime.UtcNow;
@@ -122,6 +124,7 @@ namespace PrivacyIdeaServer.Models.Database
             Resolver = resolver;
             FirstAuth = DateTime.UtcNow;
             LastAuth = DateTime.UtcNow;
+            AuthCount = 0;
         }
     }
 

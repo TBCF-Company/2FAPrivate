@@ -194,6 +194,17 @@ namespace PrivacyIdeaServer.Lib
     }
 
     /// <summary>
+    /// Alias for ConfigAdminError for backward compatibility
+    /// </summary>
+    public class ConfigAdminException : ConfigAdminError
+    {
+        public ConfigAdminException(string description = "config admin error!", int id = ErrorCodes.CONFIGADMIN)
+            : base(description, id)
+        {
+        }
+    }
+
+    /// <summary>
     /// Certificate Authority errors
     /// </summary>
     public class CAError : PrivacyIDEAError
