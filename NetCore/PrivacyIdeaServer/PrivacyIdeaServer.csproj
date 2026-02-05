@@ -15,6 +15,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <!-- Cryptography and security -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!-- For LDAP support (future) -->
+    <PackageReference Include="Novell.Directory.Ldap.NETStandard" Version="3.6.0" />
+    <!-- For RADIUS support (future) -->
+    <PackageReference Include="Flexinets.Radius.Core" Version="2.1.1" />
   </ItemGroup>
 
 </Project>
