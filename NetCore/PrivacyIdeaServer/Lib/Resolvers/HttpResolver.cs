@@ -96,8 +96,8 @@ namespace PrivacyIdeaServer.Lib.Resolvers
     /// </summary>
     public class HttpResolver : UserIdResolverBase
     {
-        private readonly ILogger<HttpResolver> _logger;
-        private readonly IHttpClientFactory _httpClientFactory;
+        protected readonly ILogger<HttpResolver> _logger;
+        protected readonly IHttpClientFactory _httpClientFactory;
 
         protected string BaseUrl { get; set; } = string.Empty;
         protected Dictionary<string, string> Headers { get; set; } = new();

@@ -111,11 +111,11 @@ namespace PrivacyIdeaServer.Lib.Resolvers
                     .WithAuthority(new Uri(_authority))
                     .Build();
 
-                Logger.LogInformation("Successfully configured Entra ID resolver");
+                _logger.LogInformation("Successfully configured Entra ID resolver");
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to configure Entra ID application");
+                _logger.LogError(ex, "Failed to configure Entra ID application");
                 throw;
             }
         }
@@ -132,7 +132,7 @@ namespace PrivacyIdeaServer.Lib.Resolvers
                     var scopes = new[] { "https://graph.microsoft.com/.default" };
                     var result = await _msGraphApp.AcquireTokenForClient(scopes).ExecuteAsync();
 
-                    var client = HttpClientFactory.CreateClient();
+                    var client = _httpClientFactory.CreateClient();
                     client.BaseAddress = new Uri(BaseUrl);
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {result.AccessToken}");
 
@@ -159,20 +159,12 @@ namespace PrivacyIdeaServer.Lib.Resolvers
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Failed to acquire token or send request to Entra ID");
+                    _logger.LogError(ex, "Failed to acquire token or send request to Entra ID");
                     throw;
                 }
             }
 
             return await base.SendHttpRequestAsync(config, tags);
         }
-
-        private ILogger Logger => (ILogger)typeof(HttpResolver)
-            .GetField("_logger", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .GetValue(this)!;
-
-        private IHttpClientFactory HttpClientFactory => (IHttpClientFactory)typeof(HttpResolver)
-            .GetField("_httpClientFactory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .GetValue(this)!;
     }
 }
