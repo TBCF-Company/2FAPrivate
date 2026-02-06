@@ -34,7 +34,8 @@ namespace PrivacyIdeaServer.Lib.Users
         private readonly ILogger<UserIdentity> _logger;
         private readonly PrivacyIDEAContext _context;
         private readonly RealmService _realmService;
-        private readonly Dictionary<string, bool> _passwordVerificationCache = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _passwordVerificationCache = new();
+        private readonly string? _cachedNodeUuid;
 
         public string LoginName { get; private set; } = string.Empty;
         public string DisplayLoginName { get; private set; } = string.Empty;
@@ -59,6 +60,7 @@ namespace PrivacyIdeaServer.Lib.Users
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _realmService = realmService ?? throw new ArgumentNullException(nameof(realmService));
+            _cachedNodeUuid = Framework.GetAppConfigValue<string>("PI_NODE_UUID");
 
             LoginName = login?.Trim() ?? string.Empty;
             DisplayLoginName = LoginName;
@@ -542,13 +544,13 @@ namespace PrivacyIdeaServer.Lib.Users
         {
             if (obj is not UserIdentity other)
             {
-                _logger.LogInformation("Comparing non-user object: {This} != {Other}", this, obj?.GetType());
+                _logger.LogDebug("Comparing non-user object: {This} != {Other}", this, obj?.GetType());
                 return false;
             }
 
             if (ResolverName != other.ResolverName || RealmName != other.RealmName)
             {
-                _logger.LogInformation("Users not in same resolver/realm: {This} != {Other}", this, other);
+                _logger.LogDebug("Users not in same resolver/realm: {This} != {Other}", this, other);
                 return false;
             }
 
@@ -625,10 +627,9 @@ namespace PrivacyIdeaServer.Lib.Users
             }
 
             var sortedResolvers = resolverPriorities.OrderBy(r => r.priority).ToList();
-            var nodeUuid = Framework.GetAppConfigValue<string>("PI_NODE_UUID");
             
             var filtered = sortedResolvers
-                .Where(r => string.IsNullOrEmpty(r.node) || r.node == nodeUuid)
+                .Where(r => string.IsNullOrEmpty(r.node) || r.node == _cachedNodeUuid)
                 .Select(r => r.name)
                 .Distinct()
                 .ToList();
@@ -683,6 +684,8 @@ namespace PrivacyIdeaServer.Lib.Users
 
         private static string ComputePasswordHash(string password)
         {
+            // Note: This is used for in-memory caching only, not for password storage
+            // The actual password verification is delegated to the resolver
             var hashBytes = SHA512.HashData(Encoding.UTF8.GetBytes(password));
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
@@ -695,16 +698,21 @@ namespace PrivacyIdeaServer.Lib.Users
     {
         private readonly PrivacyIDEAContext _context;
         private readonly ILogger<UserService> _logger;
+        private readonly ILogger<UserIdentity> _userIdentityLogger;
         private readonly RealmService _realmService;
+        private readonly string? _cachedNodeUuid;
 
         public UserService(
             PrivacyIDEAContext context,
             ILogger<UserService> logger,
+            ILogger<UserIdentity> userIdentityLogger,
             RealmService realmService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _userIdentityLogger = userIdentityLogger ?? throw new ArgumentNullException(nameof(userIdentityLogger));
             _realmService = realmService ?? throw new ArgumentNullException(nameof(realmService));
+            _cachedNodeUuid = Framework.GetAppConfigValue<string>("PI_NODE_UUID");
         }
 
         /// <summary>
@@ -788,10 +796,7 @@ namespace PrivacyIdeaServer.Lib.Users
 
             var resolverName = GetParameter(parameters, "resolver", false) ?? string.Empty;
 
-            // Create logger through logging factory (assumes we have access via DI)
-            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-            var userLogger = loggerFactory.CreateLogger<UserIdentity>();
-            var user = new UserIdentity(_context, userLogger, _realmService, username ?? string.Empty, realm, resolverName);
+            var user = new UserIdentity(_context, _userIdentityLogger, _realmService, username ?? string.Empty, realm, resolverName);
             await user.InitializeFromStoreAsync();
 
             return user;
@@ -843,8 +848,6 @@ namespace PrivacyIdeaServer.Lib.Users
                 resolversToSearch.Add(userResolver);
             }
 
-            var nodeUuid = Framework.GetAppConfigValue<string>("PI_NODE_UUID");
-
             foreach (var realmToCheck in new[] { paramRealm, userRealm }.Where(r => !string.IsNullOrEmpty(r)))
             {
                 var realmConfig = await _realmService.GetRealmsAsync(realmToCheck);
@@ -854,7 +857,7 @@ namespace PrivacyIdeaServer.Lib.Users
                     {
                         if (!string.IsNullOrEmpty(resolver.Name))
                         {
-                            if (string.IsNullOrEmpty(resolver.Node) || resolver.Node == nodeUuid)
+                            if (string.IsNullOrEmpty(resolver.Node) || resolver.Node == _cachedNodeUuid)
                             {
                                 resolversToSearch.Add(resolver.Name);
                             }
@@ -870,7 +873,7 @@ namespace PrivacyIdeaServer.Lib.Users
                 {
                     foreach (var resolver in realmEntry.Resolvers)
                     {
-                        if (string.IsNullOrEmpty(resolver.Node) || resolver.Node == nodeUuid)
+                        if (string.IsNullOrEmpty(resolver.Node) || resolver.Node == _cachedNodeUuid)
                         {
                             resolversToSearch.Add(resolver.Name);
                         }
