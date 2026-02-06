@@ -37,12 +37,56 @@ public class XmlSigningService : IXmlSigningService
     // In production, use a database or distributed cache
     private readonly ConcurrentDictionary<string, SigningSession> _pendingSessions = new();
     
+    // Track failed verification attempts per session (for rate limiting)
+    private readonly ConcurrentDictionary<string, int> _failedAttempts = new();
+    
     // Session expiry time (5 minutes)
     private const int SessionExpiryMinutes = 5;
+    
+    // Maximum failed attempts before locking session
+    private const int MaxFailedAttempts = 3;
     
     public XmlSigningService(ILogger<XmlSigningService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Start background cleanup task to remove expired sessions
+        Task.Run(() => CleanupExpiredSessionsAsync());
+    }
+    
+    /// <summary>
+    /// Background task to periodically clean up expired sessions
+    /// </summary>
+    private async Task CleanupExpiredSessionsAsync()
+    {
+        while (true)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1)); // Run cleanup every minute
+                
+                var expiredSessions = _pendingSessions
+                    .Where(kvp => DateTime.UtcNow > kvp.Value.ExpiresAt)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+                
+                foreach (var sessionId in expiredSessions)
+                {
+                    _pendingSessions.TryRemove(sessionId, out _);
+                    _failedAttempts.TryRemove(sessionId, out _);
+                    _logger.LogDebug("Cleaned up expired session {SessionId}", sessionId);
+                }
+                
+                if (expiredSessions.Any())
+                {
+                    _logger.LogInformation("Cleaned up {Count} expired sessions", expiredSessions.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during session cleanup");
+            }
+        }
     }
     
     public Task<AuthCodeResponse> InitiateSigningAsync(XmlSigningRequest request)
@@ -147,22 +191,45 @@ public class XmlSigningService : IXmlSigningService
                 });
             }
             
-            // Verify auth code
-            if (request.AuthCode != session.AuthCode)
+            // Check if session is locked due to too many failed attempts
+            if (_failedAttempts.TryGetValue(request.SessionId, out var attempts) && attempts >= MaxFailedAttempts)
             {
-                _logger.LogWarning("Invalid auth code for session {SessionId}", request.SessionId);
+                _pendingSessions.TryRemove(request.SessionId, out _);
+                _failedAttempts.TryRemove(request.SessionId, out _);
+                _logger.LogWarning("Session {SessionId} locked due to too many failed attempts", request.SessionId);
                 return Task.FromResult(new SignedXmlResponse
                 {
                     Success = false,
-                    Message = "Invalid authentication code. Please try again."
+                    Message = "Too many failed attempts. Please initiate signing again."
+                });
+            }
+            
+            // Verify auth code
+            if (request.AuthCode != session.AuthCode)
+            {
+                // Increment failed attempts
+                _failedAttempts.AddOrUpdate(request.SessionId, 1, (key, count) => count + 1);
+                var currentAttempts = _failedAttempts[request.SessionId];
+                var remaining = MaxFailedAttempts - currentAttempts;
+                
+                _logger.LogWarning("Invalid auth code for session {SessionId}. Attempts: {Attempts}/{Max}", 
+                    request.SessionId, currentAttempts, MaxFailedAttempts);
+                
+                return Task.FromResult(new SignedXmlResponse
+                {
+                    Success = false,
+                    Message = remaining > 0 
+                        ? $"Invalid authentication code. {remaining} attempt(s) remaining."
+                        : "Too many failed attempts. Session locked."
                 });
             }
             
             // Auth code is valid, proceed with XML signing
             var signedXml = SignXmlDocument(session.XmlContent);
             
-            // Remove the session
+            // Remove the session and failed attempts counter
             _pendingSessions.TryRemove(request.SessionId, out _);
+            _failedAttempts.TryRemove(request.SessionId, out _);
             
             _logger.LogInformation("Successfully signed XML for session {SessionId}", request.SessionId);
             

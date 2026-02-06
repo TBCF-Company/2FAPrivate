@@ -11,6 +11,9 @@ This example demonstrates:
 - **2FA Integration**: Generate and validate 2-character authentication codes
 - **Secure Workflow**: Multi-step process ensures proper authentication before signing
 - **Session Management**: Temporary sessions with expiration to prevent replay attacks
+- **Rate Limiting**: Maximum 3 failed attempts per session to prevent brute force attacks
+
+**Note on 2-character codes**: This example uses 2-character codes (00-99) for simplicity and ease of use as specified in the requirements. For production environments with higher security needs, consider using 6-digit codes or TOTP-based authentication. The current implementation includes rate limiting (3 attempts) to mitigate brute force attacks.
 
 ## Architecture
 
@@ -182,11 +185,14 @@ Console.WriteLine($"Signed XML:\n{signedXmlResponse.SignedXml}");
 - **Session Expiry**: 5-minute timeout on pending signing sessions
 - **One-time Use**: Sessions are removed after successful signing or expiration
 - **Session Isolation**: Each signing request has a unique session ID
+- **Automatic Cleanup**: Background task removes expired sessions to prevent memory leaks
 
 ### Authentication
-- **2-Character Codes**: Simple but effective authentication (00-99)
+- **2-Character Codes**: Simple authentication (00-99) as per requirements
 - **Cryptographically Secure**: Uses `RandomNumberGenerator` for code generation
 - **Code Validation**: Exact match required for authentication
+- **Rate Limiting**: Maximum 3 failed verification attempts per session
+- **Session Locking**: Session is locked after too many failed attempts
 
 ### XML Signing
 - **RSA 2048-bit**: Strong cryptographic algorithm
