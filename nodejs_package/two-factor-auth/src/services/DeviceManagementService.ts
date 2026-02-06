@@ -16,7 +16,10 @@ export class DeviceManagementService {
   
   // In-memory storage (use database in production)
   private devices: Map<string, DeviceInfo>;
-  private pendingActivations: Map<string, string>; // deviceId -> secret
+  private pendingActivations: Map<string, { secret: string; expiresAt: Date }>; // deviceId -> { secret, expiresAt }
+  
+  // Activation requests expire after 5 minutes
+  private readonly activationExpiryMinutes = 5;
 
   constructor(otpManager?: OtpManager) {
     this.otpManager = otpManager || new OtpManager();
@@ -37,8 +40,9 @@ export class DeviceManagementService {
       // Generate current OTP code to display (use sync version for simplicity)
       const otpCode = this.otpManager.generateTotpSync(secret);
 
-      // Store pending activation
-      this.pendingActivations.set(request.deviceId, secret);
+      // Store pending activation with expiration
+      const expiresAt = new Date(Date.now() + this.activationExpiryMinutes * 60 * 1000);
+      this.pendingActivations.set(request.deviceId, { secret, expiresAt });
 
       // Store device info as pending
       const deviceInfo: DeviceInfo = {
@@ -81,14 +85,26 @@ export class DeviceManagementService {
       console.log(`Validating device activation for ${validation.deviceId}`);
 
       // Check if we have a pending activation for this device
-      const secret = this.pendingActivations.get(validation.deviceId);
-      if (!secret) {
+      const activationData = this.pendingActivations.get(validation.deviceId);
+      if (!activationData) {
         console.warn(`No pending activation found for device ${validation.deviceId}`);
         return {
           success: false,
           message: 'No pending activation found for this device. Please request activation first.',
         };
       }
+
+      // Check if activation has expired
+      if (new Date() > activationData.expiresAt) {
+        this.pendingActivations.delete(validation.deviceId);
+        console.warn(`Activation request expired for device ${validation.deviceId}`);
+        return {
+          success: false,
+          message: 'Activation request has expired. Please request activation again.',
+        };
+      }
+
+      const secret = activationData.secret;
 
       // Validate OTP code
       const isValid = await this.otpManager.validateTotp(secret, validation.otpCode);

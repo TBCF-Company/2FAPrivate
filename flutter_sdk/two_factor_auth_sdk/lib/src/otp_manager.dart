@@ -1,5 +1,6 @@
 import 'package:otp/otp.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 
 /// OTP Manager for generating and validating OTP codes
@@ -120,11 +121,11 @@ class OtpManager {
   /// Generate a random secret key
   String generateSecret({int length = 20}) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 characters
-    final random = DateTime.now().microsecondsSinceEpoch;
+    final random = Random.secure();
     final buffer = StringBuffer();
     
     for (int i = 0; i < length; i++) {
-      final index = (random + i * 7919) % chars.length; // Use prime number for distribution
+      final index = random.nextInt(chars.length);
       buffer.write(chars[index]);
     }
     

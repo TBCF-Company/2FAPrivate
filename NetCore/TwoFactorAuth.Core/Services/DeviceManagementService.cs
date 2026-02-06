@@ -54,7 +54,10 @@ public class DeviceManagementService : IDeviceManagementService
     // In-memory storage for demonstration
     // In production, use a database
     private readonly ConcurrentDictionary<string, DeviceInfo> _devices = new();
-    private readonly ConcurrentDictionary<string, string> _pendingActivations = new(); // deviceId -> secret
+    private readonly ConcurrentDictionary<string, (string Secret, DateTime ExpiresAt)> _pendingActivations = new(); // deviceId -> (secret, expiry)
+    
+    // Activation requests expire after 5 minutes
+    private const int ActivationExpiryMinutes = 5;
     
     public DeviceManagementService(ILogger<DeviceManagementService> logger)
     {
@@ -75,8 +78,9 @@ public class DeviceManagementService : IDeviceManagementService
             var totp = new Totp(secretKey, step: 30, totpSize: 6);
             var otpCode = totp.ComputeTotp();
             
-            // Store pending activation
-            _pendingActivations[request.DeviceId] = secret;
+            // Store pending activation with expiration
+            var expiresAt = DateTime.UtcNow.AddMinutes(ActivationExpiryMinutes);
+            _pendingActivations[request.DeviceId] = (secret, expiresAt);
             
             // Store device info as pending
             var deviceInfo = new DeviceInfo
@@ -124,7 +128,7 @@ public class DeviceManagementService : IDeviceManagementService
             _logger.LogInformation("Validating device activation for {DeviceId}", validation.DeviceId);
             
             // Check if we have a pending activation for this device
-            if (!_pendingActivations.TryGetValue(validation.DeviceId, out var secret))
+            if (!_pendingActivations.TryGetValue(validation.DeviceId, out var activationData))
             {
                 _logger.LogWarning("No pending activation found for device {DeviceId}", validation.DeviceId);
                 return Task.FromResult(new ActivationValidationResult
@@ -133,6 +137,20 @@ public class DeviceManagementService : IDeviceManagementService
                     Message = "No pending activation found for this device. Please request activation first."
                 });
             }
+            
+            // Check if activation has expired
+            if (DateTime.UtcNow > activationData.ExpiresAt)
+            {
+                _pendingActivations.TryRemove(validation.DeviceId, out _);
+                _logger.LogWarning("Activation request expired for device {DeviceId}", validation.DeviceId);
+                return Task.FromResult(new ActivationValidationResult
+                {
+                    Success = false,
+                    Message = "Activation request has expired. Please request activation again."
+                });
+            }
+            
+            var secret = activationData.Secret;
             
             // Validate OTP code
             var secretBytes = Base32Encoding.ToBytes(secret);

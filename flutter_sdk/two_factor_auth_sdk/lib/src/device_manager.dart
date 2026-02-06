@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -183,17 +184,24 @@ class DeviceManager {
     return deviceInfo?.isActivated ?? false;
   }
 
-  /// Generate a fallback device ID using timestamp and random string
+  /// Generate a fallback device ID using secure random
   String _generateFallbackId() {
+    final random = Random.secure();
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final randomStr = List.generate(
+      16,
+      (index) => chars[random.nextInt(chars.length)],
+    ).join();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'device_${timestamp}_${_randomString(8)}';
+    return 'device_${timestamp}_$randomStr';
   }
 
   String _randomString(int length) {
+    final random = Random.secure();
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     return List.generate(
       length,
-      (index) => chars[(DateTime.now().microsecond + index) % chars.length],
+      (index) => chars[random.nextInt(chars.length)],
     ).join();
   }
 }
