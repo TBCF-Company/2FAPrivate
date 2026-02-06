@@ -664,7 +664,7 @@ namespace PrivacyIdeaServer.Lib.Resolvers
 
             if (timestamp == null)
             {
-                timestamp = new Config(ConfigConstants.PrivacyIdeaTimestamp, DateTime.UtcNow.ToString("O"));
+                timestamp = new PrivacyIdeaServer.Models.Database.Config(ConfigConstants.PrivacyIdeaTimestamp, DateTime.UtcNow.ToString("O"));
                 _context.Configs.Add(timestamp);
             }
             else
