@@ -1,7 +1,9 @@
 @page "/business-operation"
 @inject HttpClient Http
+@inject IConfiguration Configuration
 @using System.Text.Json
 @using System.Text
+@using QRCoder
 
 <PageTitle>Business Operation with 2FA</PageTitle>
 
@@ -263,6 +265,8 @@
 </style>
 
 @code {
+    private const int TransactionIdLength = 12;
+    
     private enum Step
     {
         NotEnrolled,
@@ -275,18 +279,19 @@
     private Step currentStep = Step.NotEnrolled;
     private bool isLoading = false;
     private string errorMessage = "";
+    private string apiBaseUrl = "";
     
     // Enrollment data
-    private string accountName = "user@banking.com";
-    private string issuerName = "Banking App 2FA";
+    private string accountName = "";
+    private string issuerName = "";
     private string secretKey = "";
     private string qrCodeImageUrl = "";
     
     // Transaction data
-    private string fromAccount = "1234567890";
-    private string toAccount = "0987654321";
-    private decimal amount = 1000000;
-    private string description = "Chuyển tiền / Money transfer";
+    private string fromAccount = "";
+    private string toAccount = "";
+    private decimal amount = 0;
+    private string description = "";
     
     // OTP verification
     private string otpCode = "";
@@ -294,6 +299,12 @@
     // Transaction result
     private string transactionId = "";
     private string transactionTime = "";
+    
+    protected override void OnInitialized()
+    {
+        // Get API base URL from configuration, default to localhost if not configured
+        apiBaseUrl = Configuration.GetValue<string>("OtpApiBaseUrl") ?? "https://localhost:5001";
+    }
     
     private void StartEnrollment()
     {
@@ -320,7 +331,7 @@
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await Http.PostAsync("http://localhost:5001/api/otp/enroll", content);
+            var response = await Http.PostAsync($"{apiBaseUrl}/api/otp/enroll", content);
             
             if (response.IsSuccessStatusCode)
             {
@@ -335,8 +346,8 @@
                     secretKey = result.Secret;
                     var qrCodeUrl = result.ProvisioningUri;
                     
-                    // Generate QR code using a public QR code API
-                    qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrCodeUrl)}";
+                    // Generate QR code locally for security
+                    qrCodeImageUrl = GenerateQrCodeDataUrl(qrCodeUrl);
                 }
             }
             else
@@ -412,7 +423,7 @@
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await Http.PostAsync("http://localhost:5001/api/otp/validate", content);
+            var response = await Http.PostAsync($"{apiBaseUrl}/api/otp/validate", content);
             
             if (response.IsSuccessStatusCode)
             {
@@ -450,7 +461,7 @@
     private void ExecuteTransaction()
     {
         // Simulate transaction execution
-        transactionId = Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper();
+        transactionId = Guid.NewGuid().ToString("N").Substring(0, TransactionIdLength).ToUpper();
         transactionTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         
         currentStep = Step.Success;
@@ -467,18 +478,38 @@
     private void NewTransaction()
     {
         currentStep = Step.Ready;
-        fromAccount = "1234567890";
-        toAccount = "0987654321";
-        amount = 1000000;
-        description = "Chuyển tiền / Money transfer";
+        fromAccount = "";
+        toAccount = "";
+        amount = 0;
+        description = "";
         otpCode = "";
         errorMessage = "";
     }
     
     private async Task CopySecret()
     {
-        // In a real app, you'd use JS Interop to copy to clipboard
+        // Note: Clipboard functionality requires JS Interop
+        // This is a placeholder for future implementation
+        // TODO: Implement using IJSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", secretKey)
         await Task.CompletedTask;
+    }
+    
+    private string GenerateQrCodeDataUrl(string text)
+    {
+        try
+        {
+            using var qrGenerator = new QRCodeGenerator();
+            using var qrCodeData = qrGenerator.CreateQrCode(text, QRCodeGenerator.ECCLevel.Q);
+            using var qrCode = new PngByteQRCode(qrCodeData);
+            var qrCodeBytes = qrCode.GetGraphic(20);
+            var base64String = Convert.ToBase64String(qrCodeBytes);
+            return $"data:image/png;base64,{base64String}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to generate QR code: {ex.Message}";
+            return "";
+        }
     }
     
     private class EnrollResponse
