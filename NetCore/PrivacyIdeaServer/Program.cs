@@ -5,6 +5,7 @@
 using Microsoft.EntityFrameworkCore;
 using PrivacyIdeaServer.Models;
 using PrivacyIdeaServer.Lib;
+using PrivacyIdeaServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,8 +30,9 @@ builder.Services.AddHttpClient("NoTlsValidation")
         ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
 
-// Register services
+// Register services with Dependency Injection
 builder.Services.AddScoped<IPrivacyIDEAServerService, PrivacyIDEAServerService>();
+builder.Services.AddScoped<IOtpTokenService, OtpTokenService>();
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
