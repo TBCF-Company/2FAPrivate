@@ -144,8 +144,8 @@ namespace PrivacyIdeaServer.Lib.Config
         /// </summary>
         public async Task ReloadFromDbAsync()
         {
-            var checkReloadConfig = Framework.GetAppConfigValue("PI_CHECK_RELOAD_CONFIG", 0);
-            if (Timestamp == null || Timestamp.Value.AddSeconds(checkReloadConfig) < DateTime.UtcNow)
+            var reloadIntervalSeconds = Framework.GetAppConfigValue("PI_CHECK_RELOAD_CONFIG", 0);
+            if (Timestamp == null || Timestamp.Value.AddSeconds(reloadIntervalSeconds) < DateTime.UtcNow)
             {
                 var dbTs = await _context.Configs
                     .Where(c => c.Key == ConfigConstants.PrivacyIdeaTimestamp)
@@ -208,7 +208,8 @@ namespace PrivacyIdeaServer.Lib.Config
                                 }
                                 catch (JsonException ex)
                                 {
-                                    _logger.LogDebug($"Could not load {rconf.Key} ({rconf.Value}) from resolver config as JSON: {ex.Message}");
+                                    _logger.LogDebug(ex, "Could not load dict {Key} ({Value}) from resolver config as JSON", 
+                                        rconf.Key, rconf.Value);
                                     value = rconf.Value ?? string.Empty;
                                 }
                             }
@@ -228,7 +229,8 @@ namespace PrivacyIdeaServer.Lib.Config
                                 }
                                 catch (JsonException ex)
                                 {
-                                    _logger.LogDebug($"Could not load {rconf.Key} ({rconf.Value}) from resolver config as JSON: {ex.Message}");
+                                    _logger.LogDebug(ex, "Could not load dict_with_password {Key} ({Value}) from resolver config as JSON", 
+                                        rconf.Key, rconf.Value);
                                     value = rconf.Value ?? string.Empty;
                                 }
                             }
@@ -429,7 +431,7 @@ namespace PrivacyIdeaServer.Lib.Config
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Failed to decrypt password: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to decrypt password");
                 return "FAILED_TO_DECRYPT_PASSWORD";
             }
         }
@@ -872,7 +874,7 @@ namespace PrivacyIdeaServer.Lib.Config
         /// <returns>Dictionary of import results (insert/update)</returns>
         public async Task<Dictionary<string, string>> ImportConfigAsync(Dictionary<string, ConfigValue> data, string? name = null)
         {
-            _logger.LogDebug($"Import server config: {data.Count} items");
+            _logger.LogDebug("Import server config: {Count} items", data.Count);
 
             var results = new Dictionary<string, string>();
             data.Remove(ConfigConstants.PrivacyIdeaTimestamp);
@@ -896,8 +898,8 @@ namespace PrivacyIdeaServer.Lib.Config
             var inserted = results.Where(r => r.Value == "insert").Select(r => r.Key);
             var updated = results.Where(r => r.Value == "update").Select(r => r.Key);
 
-            _logger.LogInformation($"Added configuration: {string.Join(", ", inserted)}");
-            _logger.LogInformation($"Updated configuration: {string.Join(", ", updated)}");
+            _logger.LogInformation("Added configuration: {ConfigKeys}", string.Join(", ", inserted));
+            _logger.LogInformation("Updated configuration: {ConfigKeys}", string.Join(", ", updated));
 
             return results;
         }
