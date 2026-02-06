@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -202,7 +203,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
         /// <summary>
         /// Get the token type
         /// </summary>
-        public string? GetType() => _token.TokenType;
+        public string? GetTokenType() => _token.TokenType;
 
         /// <summary>
         /// Get the serial number of the token
@@ -874,10 +875,11 @@ namespace PrivacyIdeaServer.Lib.Tokens
         /// </summary>
         protected virtual string GenerateOtpKey(int keySize)
         {
-            // TODO: Implement proper OTP key generation
-            var random = new Random();
             var bytes = new byte[keySize];
-            random.NextBytes(bytes);
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(bytes);
+            }
             return Convert.ToHexString(bytes);
         }
 
