@@ -1,0 +1,375 @@
+@page "/twofa"
+@page "/2fa"
+@inject HttpClient Http
+@using System.Text.Json
+@using System.Text
+
+<PageTitle>Two-Factor Authentication</PageTitle>
+
+<h1>Two-Factor Authentication Setup</h1>
+
+<div class="container mt-4">
+    @if (step == 1)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3>Step 1: Enroll Your Device</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" @bind="username" placeholder="Enter your username">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="issuer" class="form-label">Issuer (App Name)</label>
+                    <input type="text" class="form-control" id="issuer" @bind="issuer" value="2FA Demo App">
+                </div>
+                
+                <button class="btn btn-primary" @onclick="EnrollDevice" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Enroll Device
+                </button>
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">@errorMessage</div>
+                }
+            </div>
+        </div>
+    }
+    else if (step == 2)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3>Step 2: Scan QR Code</h3>
+            </div>
+            <div class="card-body">
+                <p>Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, etc.)</p>
+                
+                @if (!string.IsNullOrEmpty(qrCodeUrl))
+                {
+                    <div class="text-center my-4">
+                        <img src="@qrCodeImageUrl" alt="QR Code" class="img-fluid" style="max-width: 300px;">
+                    </div>
+                }
+                
+                <div class="alert alert-info">
+                    <h5>Secret Key (Manual Entry):</h5>
+                    <code class="fs-5">@secret</code>
+                    <button class="btn btn-sm btn-secondary ms-2" @onclick="CopySecret">Copy</button>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <strong>Important:</strong> Keep this secret key safe! You'll need it to generate OTP codes.
+                </div>
+                
+                <button class="btn btn-success" @onclick="GoToValidation">
+                    Continue to Validation
+                </button>
+                
+                <button class="btn btn-secondary ms-2" @onclick="StartOver">
+                    Start Over
+                </button>
+            </div>
+        </div>
+    }
+    else if (step == 3)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3>Step 3: Test Your Setup</h3>
+            </div>
+            <div class="card-body">
+                <p>Enter the 6-digit code from your authenticator app to verify the setup:</p>
+                
+                <div class="mb-3">
+                    <label for="otpCode" class="form-label">OTP Code</label>
+                    <input type="text" class="form-control form-control-lg text-center" 
+                           id="otpCode" @bind="otpCode" 
+                           placeholder="000000"
+                           maxlength="6"
+                           style="font-size: 2rem; letter-spacing: 0.5rem;">
+                </div>
+                
+                <button class="btn btn-primary" @onclick="ValidateOtp" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Validate Code
+                </button>
+                
+                <button class="btn btn-secondary ms-2" @onclick="GoBack">
+                    Back
+                </button>
+                
+                @if (validationResult.HasValue)
+                {
+                    @if (validationResult.Value)
+                    {
+                        <div class="alert alert-success mt-3">
+                            <h4>✓ Success!</h4>
+                            <p>Your OTP code is valid. Two-factor authentication is now set up!</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-danger mt-3">
+                            <h4>✗ Invalid Code</h4>
+                            <p>The OTP code you entered is incorrect. Please try again.</p>
+                        </div>
+                    }
+                }
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">@errorMessage</div>
+                }
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4>Testing: Generate Current OTP</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">For testing purposes, you can generate the current OTP code:</p>
+                <button class="btn btn-outline-secondary" @onclick="GenerateCurrentOtp" disabled="@isLoading">
+                    Generate Current OTP
+                </button>
+                
+                @if (!string.IsNullOrEmpty(currentOtp))
+                {
+                    <div class="alert alert-info mt-3">
+                        <h5>Current OTP Code:</h5>
+                        <code class="fs-3">@currentOtp</code>
+                        <p class="mt-2 mb-0"><small>This code expires in ~30 seconds</small></p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int step = 1;
+    private string username = "user@example.com";
+    private string issuer = "2FA Demo App";
+    private string secret = "";
+    private string qrCodeUrl = "";
+    private string qrCodeImageUrl = "";
+    private string otpCode = "";
+    private string currentOtp = "";
+    private bool isLoading = false;
+    private string errorMessage = "";
+    private bool? validationResult = null;
+
+    private async Task EnrollDevice()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            var request = new
+            {
+                username = username,
+                issuer = issuer,
+                isTotp = true,
+                digits = 6,
+                step = 30
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            // Note: In production, this would call the actual API endpoint
+            // For now, we're simulating the call
+            var response = await Http.PostAsync("http://localhost:5001/api/otp/enroll", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<EnrollResponse>(responseContent, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                if (result != null)
+                {
+                    secret = result.Secret;
+                    qrCodeUrl = result.ProvisioningUri;
+                    
+                    // Generate QR code using a public QR code API
+                    qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrCodeUrl)}";
+                    
+                    step = 2;
+                }
+            }
+            else
+            {
+                errorMessage = "Failed to enroll device. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ValidateOtp()
+    {
+        isLoading = true;
+        errorMessage = "";
+        validationResult = null;
+        
+        try
+        {
+            var request = new
+            {
+                secret = secret,
+                code = otpCode,
+                isTotp = true,
+                digits = 6,
+                step = 30
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await Http.PostAsync("http://localhost:5001/api/otp/validate", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ValidateResponse>(responseContent, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                validationResult = result?.IsValid ?? false;
+            }
+            else
+            {
+                errorMessage = "Failed to validate OTP. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task GenerateCurrentOtp()
+    {
+        isLoading = true;
+        errorMessage = "";
+        currentOtp = "";
+        
+        try
+        {
+            var request = new
+            {
+                secret = secret,
+                isTotp = true,
+                digits = 6,
+                step = 30
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await Http.PostAsync("http://localhost:5001/api/otp/generate", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<GenerateResponse>(responseContent, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                currentOtp = result?.Code ?? "";
+            }
+            else
+            {
+                errorMessage = "Failed to generate OTP. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoToValidation()
+    {
+        step = 3;
+        validationResult = null;
+        otpCode = "";
+        currentOtp = "";
+    }
+
+    private void GoBack()
+    {
+        step = 2;
+        validationResult = null;
+        otpCode = "";
+    }
+
+    private void StartOver()
+    {
+        step = 1;
+        username = "user@example.com";
+        issuer = "2FA Demo App";
+        secret = "";
+        qrCodeUrl = "";
+        qrCodeImageUrl = "";
+        otpCode = "";
+        currentOtp = "";
+        validationResult = null;
+        errorMessage = "";
+    }
+
+    private async Task CopySecret()
+    {
+        // In a real app, you'd use JS Interop to copy to clipboard
+        // For now, just show a message
+        await Task.CompletedTask;
+    }
+
+    private class EnrollResponse
+    {
+        public string Secret { get; set; } = "";
+        public string ProvisioningUri { get; set; } = "";
+        public string QrCodeDataUrl { get; set; } = "";
+    }
+
+    private class ValidateResponse
+    {
+        public bool IsValid { get; set; }
+        public string Message { get; set; } = "";
+    }
+
+    private class GenerateResponse
+    {
+        public string Code { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+    }
+}
