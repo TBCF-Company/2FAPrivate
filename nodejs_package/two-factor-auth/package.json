@@ -1,0 +1,31 @@
+{
+  "name": "@tbcf/two-factor-auth",
+  "version": "1.0.0",
+  "description": "NodeJS/TypeScript package for two-factor authentication with device management",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "2fa",
+    "otp",
+    "totp",
+    "device-management",
+    "authentication"
+  ],
+  "author": "TBCF Company",
+  "license": "AGPL-3.0-or-later",
+  "type": "commonjs",
+  "dependencies": {
+    "base32.js": "^0.1.0",
+    "otplib": "^13.2.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.1",
+    "typescript": "^5.9.3"
+  }
+}

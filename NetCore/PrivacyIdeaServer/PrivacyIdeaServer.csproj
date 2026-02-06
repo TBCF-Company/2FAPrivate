@@ -29,4 +29,8 @@
     <PackageReference Include="YamlDotNet" Version="15.1.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TwoFactorAuth.Core\TwoFactorAuth.Core.csproj" />
+  </ItemGroup>
+
 </Project>

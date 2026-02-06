@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Two Factor Auth SDK
+  two_factor_auth_sdk:
+    path: ../flutter_sdk/two_factor_auth_sdk
+  
   # HTTP client
   http: ^1.1.0
   

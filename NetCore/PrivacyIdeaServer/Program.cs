@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PrivacyIdeaServer.Models;
 using PrivacyIdeaServer.Lib;
 using PrivacyIdeaServer.Services;
+using TwoFactorAuth.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,7 @@ builder.Services.AddHttpClient("NoTlsValidation")
 // Register services with Dependency Injection
 builder.Services.AddScoped<IPrivacyIDEAServerService, PrivacyIDEAServerService>();
 builder.Services.AddScoped<IOtpTokenService, OtpTokenService>();
+builder.Services.AddSingleton<IDeviceManagementService, DeviceManagementService>();
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
