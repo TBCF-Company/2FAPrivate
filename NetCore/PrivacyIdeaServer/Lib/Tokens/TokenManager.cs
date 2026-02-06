@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -289,19 +290,22 @@ namespace PrivacyIdeaServer.Lib.Tokens
         }
 
         /// <summary>
-        /// Generate a completely random serial number
+        /// Generate a completely random serial number using cryptographically secure random
         /// </summary>
         private async Task<string> GenerateRandomSerialAsync()
         {
-            var random = new Random();
+            using var rng = RandomNumberGenerator.Create();
             var alphabet = TokenManagerConstants.B32Alphabet;
             
             for (int i = 0; i < 100; i++)
             {
                 var serial = new StringBuilder("PI");
+                var randomBytes = new byte[10];
+                rng.GetBytes(randomBytes);
+                
                 for (int j = 0; j < 10; j++)
                 {
-                    serial.Append(alphabet[random.Next(alphabet.Length)]);
+                    serial.Append(alphabet[randomBytes[j] % alphabet.Length]);
                 }
                 
                 var serialStr = serial.ToString();
@@ -315,14 +319,20 @@ namespace PrivacyIdeaServer.Lib.Tokens
         }
 
         /// <summary>
-        /// Generate a random number with specified digits
+        /// Generate a cryptographically secure random number with specified digits
         /// </summary>
         private int GenerateRandomNumber(int digits)
         {
-            var random = new Random();
+            using var rng = RandomNumberGenerator.Create();
             var min = (int)Math.Pow(10, digits - 1);
-            var max = (int)Math.Pow(10, digits) - 1;
-            return random.Next(min, max + 1);
+            var max = (int)Math.Pow(10, digits);
+            var range = max - min;
+            
+            var randomBytes = new byte[4];
+            rng.GetBytes(randomBytes);
+            var randomValue = BitConverter.ToUInt32(randomBytes, 0);
+            
+            return min + (int)(randomValue % range);
         }
 
         /// <summary>
