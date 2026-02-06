@@ -364,4 +364,37 @@ namespace PrivacyIdeaServer.Lib
         {
         }
     }
+
+    /// <summary>
+    /// Alias for TokenAdminError for consistency
+    /// </summary>
+    public class TokenAdminException : TokenAdminError
+    {
+        public TokenAdminException(string description = "token admin error!", int id = ErrorCodes.TOKENADMIN)
+            : base(description, id)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Alias for ResourceNotFoundError for consistency
+    /// </summary>
+    public class ResourceNotFoundException : ResourceNotFoundError
+    {
+        public ResourceNotFoundException(string description, int id = ErrorCodes.RESOURCE_NOT_FOUND)
+            : base(description, id)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Alias for ParameterError for consistency
+    /// </summary>
+    public class ParameterException : ParameterError
+    {
+        public ParameterException(string description = "parameter error!", int id = ErrorCodes.PARAMETER)
+            : base(description, id)
+        {
+        }
+    }
 }
