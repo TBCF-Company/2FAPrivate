@@ -23,7 +23,7 @@
                 
                 <div class="mb-3">
                     <label for="issuer" class="form-label">Issuer (App Name)</label>
-                    <input type="text" class="form-control" id="issuer" @bind="issuer" value="2FA Demo App">
+                    <input type="text" class="form-control" id="issuer" @bind="issuer" placeholder="2FA Demo App">
                 </div>
                 
                 <button class="btn btn-primary" @onclick="EnrollDevice" disabled="@isLoading">
