@@ -19,6 +19,9 @@ builder.Services.AddSwaggerGen(c =>
 // Register XML Signing Service
 builder.Services.AddSingleton<IXmlSigningService, XmlSigningService>();
 
+// Register background service for session cleanup
+builder.Services.AddHostedService<SessionCleanupService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

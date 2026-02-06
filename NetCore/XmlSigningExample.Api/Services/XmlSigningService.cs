@@ -49,43 +49,36 @@ public class XmlSigningService : IXmlSigningService
     public XmlSigningService(ILogger<XmlSigningService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        // Start background cleanup task to remove expired sessions
-        Task.Run(() => CleanupExpiredSessionsAsync());
     }
     
     /// <summary>
-    /// Background task to periodically clean up expired sessions
+    /// Public method to clean up expired sessions
+    /// Called by SessionCleanupService
     /// </summary>
-    private async Task CleanupExpiredSessionsAsync()
+    public void CleanupExpiredSessions()
     {
-        while (true)
+        try
         {
-            try
+            var expiredSessions = _pendingSessions
+                .Where(kvp => DateTime.UtcNow > kvp.Value.ExpiresAt)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            foreach (var sessionId in expiredSessions)
             {
-                await Task.Delay(TimeSpan.FromMinutes(1)); // Run cleanup every minute
-                
-                var expiredSessions = _pendingSessions
-                    .Where(kvp => DateTime.UtcNow > kvp.Value.ExpiresAt)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-                
-                foreach (var sessionId in expiredSessions)
-                {
-                    _pendingSessions.TryRemove(sessionId, out _);
-                    _failedAttempts.TryRemove(sessionId, out _);
-                    _logger.LogDebug("Cleaned up expired session {SessionId}", sessionId);
-                }
-                
-                if (expiredSessions.Any())
-                {
-                    _logger.LogInformation("Cleaned up {Count} expired sessions", expiredSessions.Count);
-                }
+                _pendingSessions.TryRemove(sessionId, out _);
+                _failedAttempts.TryRemove(sessionId, out _);
+                _logger.LogDebug("Cleaned up expired session {SessionId}", sessionId);
             }
-            catch (Exception ex)
+            
+            if (expiredSessions.Any())
             {
-                _logger.LogError(ex, "Error during session cleanup");
+                _logger.LogInformation("Cleaned up {Count} expired sessions", expiredSessions.Count);
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during session cleanup");
         }
     }
     
