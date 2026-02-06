@@ -1,0 +1,496 @@
+@page "/business-operation"
+@inject HttpClient Http
+@using System.Text.Json
+@using System.Text
+
+<PageTitle>Business Operation with 2FA</PageTitle>
+
+<h1>Nghiệp vụ chuyển tiền với xác thực 2FA</h1>
+<h5 class="text-muted">Money Transfer with Two-Factor Authentication</h5>
+
+<div class="container mt-4">
+    @if (currentStep == Step.NotEnrolled)
+    {
+        <div class="alert alert-warning">
+            <h4><i class="bi bi-shield-lock"></i> Bảo mật chưa được thiết lập</h4>
+            <p>Để thực hiện các giao dịch chuyển tiền, bạn cần thiết lập xác thực 2 yếu tố (2FA) trước.</p>
+            <p>To perform money transfer transactions, you need to set up two-factor authentication (2FA) first.</p>
+            <button class="btn btn-primary" @onclick="StartEnrollment">
+                <i class="bi bi-shield-check"></i> Thiết lập 2FA / Set up 2FA
+            </button>
+        </div>
+    }
+    else if (currentStep == Step.Enrolling)
+    {
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3><i class="bi bi-qr-code-scan"></i> Bước 1: Quét mã QR</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Thông tin thiết lập / Setup Information</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Tài khoản / Account:</label>
+                            <input type="text" class="form-control" @bind="accountName" placeholder="user@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tên ứng dụng / Issuer:</label>
+                            <input type="text" class="form-control" @bind="issuerName" placeholder="Banking App">
+                        </div>
+                        <button class="btn btn-success" @onclick="GenerateQrCode" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-qr-code"></i> Tạo mã QR / Generate QR Code
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        @if (!string.IsNullOrEmpty(qrCodeImageUrl))
+                        {
+                            <div class="text-center">
+                                <h5>Quét mã QR này với ứng dụng Authenticator</h5>
+                                <p class="text-muted">Scan this QR code with your Authenticator app</p>
+                                <img src="@qrCodeImageUrl" alt="QR Code" class="img-fluid border p-2" style="max-width: 300px;">
+                                
+                                <div class="alert alert-info mt-3">
+                                    <small><strong>Khóa bí mật / Secret Key:</strong></small><br/>
+                                    <code class="fs-6">@secretKey</code>
+                                    <button class="btn btn-sm btn-secondary ms-2" @onclick="CopySecret">
+                                        <i class="bi bi-clipboard"></i> Copy
+                                    </button>
+                                </div>
+                                
+                                <button class="btn btn-primary mt-2" @onclick="CompleteEnrollment">
+                                    <i class="bi bi-check-circle"></i> Hoàn tất / Complete Setup
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">@errorMessage</div>
+                }
+            </div>
+        </div>
+    }
+    else if (currentStep == Step.Ready)
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h3><i class="bi bi-cash-coin"></i> Giao dịch chuyển tiền / Money Transfer</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <i class="bi bi-shield-check"></i> 2FA đã được thiết lập / 2FA is enabled
+                        </div>
+                        
+                        <h5>Thông tin chuyển tiền / Transfer Details</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Tài khoản nguồn / From Account:</label>
+                            <input type="text" class="form-control" @bind="fromAccount" placeholder="1234567890">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tài khoản đích / To Account:</label>
+                            <input type="text" class="form-control" @bind="toAccount" placeholder="0987654321">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Số tiền / Amount (VND):</label>
+                            <input type="number" class="form-control" @bind="amount" placeholder="1000000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nội dung / Description:</label>
+                            <input type="text" class="form-control" @bind="description" placeholder="Chuyển tiền">
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg" @onclick="InitiateTransfer" disabled="@isLoading">
+                            <i class="bi bi-arrow-right-circle"></i> Tiếp tục / Continue
+                        </button>
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">@errorMessage</div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-info-circle"></i> Hướng dẫn / Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Điền thông tin giao dịch / Fill in transfer details</li>
+                            <li>Nhấn "Tiếp tục" / Click "Continue"</li>
+                            <li>Nhập mã OTP từ ứng dụng Authenticator / Enter OTP from Authenticator app</li>
+                            <li>Xác nhận giao dịch / Confirm transaction</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (currentStep == Step.VerifyingOtp)
+    {
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h3><i class="bi bi-shield-lock-fill"></i> Bước 2: Xác thực 2FA</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5>Thông tin giao dịch cần xác nhận / Transaction to Confirm:</h5>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Từ tài khoản / From:</strong></td>
+                                <td>@fromAccount</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Đến tài khoản / To:</strong></td>
+                                <td>@toAccount</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Số tiền / Amount:</strong></td>
+                                <td class="text-danger"><strong>@amount.ToString("N0") VND</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Nội dung / Description:</strong></td>
+                                <td>@description</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fs-5">Nhập mã OTP từ ứng dụng Authenticator / Enter OTP Code:</label>
+                    <input type="text" class="form-control form-control-lg text-center" 
+                           @bind="otpCode" 
+                           placeholder="000000"
+                           maxlength="6"
+                           style="font-size: 2.5rem; letter-spacing: 1rem;">
+                    <small class="text-muted">Mã OTP có 6 chữ số và thay đổi mỗi 30 giây / OTP code has 6 digits and changes every 30 seconds</small>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-lg" @onclick="VerifyAndExecute" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-check-circle"></i> Xác nhận và thực hiện / Verify & Execute
+                    </button>
+                    
+                    <button class="btn btn-secondary" @onclick="CancelTransaction">
+                        <i class="bi bi-x-circle"></i> Hủy / Cancel
+                    </button>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">
+                        <i class="bi bi-exclamation-triangle"></i> @errorMessage
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (currentStep == Step.Success)
+    {
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h3><i class="bi bi-check-circle-fill"></i> Giao dịch thành công / Transaction Successful</h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="bi bi-check-circle text-success" style="font-size: 5rem;"></i>
+                </div>
+                
+                <div class="alert alert-success">
+                    <h4>Giao dịch đã được thực hiện thành công!</h4>
+                    <h5>Transaction completed successfully!</h5>
+                </div>
+                
+                <h5>Chi tiết giao dịch / Transaction Details:</h5>
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td><strong>Mã giao dịch / Transaction ID:</strong></td>
+                            <td><code>@transactionId</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Từ tài khoản / From:</strong></td>
+                            <td>@fromAccount</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Đến tài khoản / To:</strong></td>
+                            <td>@toAccount</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Số tiền / Amount:</strong></td>
+                            <td class="text-danger"><strong>@amount.ToString("N0") VND</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nội dung / Description:</strong></td>
+                            <td>@description</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Thời gian / Timestamp:</strong></td>
+                            <td>@transactionTime</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <button class="btn btn-primary" @onclick="NewTransaction">
+                    <i class="bi bi-plus-circle"></i> Giao dịch mới / New Transaction
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .bi {
+        margin-right: 0.25rem;
+    }
+</style>
+
+@code {
+    private enum Step
+    {
+        NotEnrolled,
+        Enrolling,
+        Ready,
+        VerifyingOtp,
+        Success
+    }
+    
+    private Step currentStep = Step.NotEnrolled;
+    private bool isLoading = false;
+    private string errorMessage = "";
+    
+    // Enrollment data
+    private string accountName = "user@banking.com";
+    private string issuerName = "Banking App 2FA";
+    private string secretKey = "";
+    private string qrCodeImageUrl = "";
+    
+    // Transaction data
+    private string fromAccount = "1234567890";
+    private string toAccount = "0987654321";
+    private decimal amount = 1000000;
+    private string description = "Chuyển tiền / Money transfer";
+    
+    // OTP verification
+    private string otpCode = "";
+    
+    // Transaction result
+    private string transactionId = "";
+    private string transactionTime = "";
+    
+    private void StartEnrollment()
+    {
+        currentStep = Step.Enrolling;
+        errorMessage = "";
+    }
+    
+    private async Task GenerateQrCode()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            var request = new
+            {
+                username = accountName,
+                issuer = issuerName,
+                isTotp = true,
+                digits = 6,
+                step = 30
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await Http.PostAsync("http://localhost:5001/api/otp/enroll", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<EnrollResponse>(responseContent, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                if (result != null)
+                {
+                    secretKey = result.Secret;
+                    var qrCodeUrl = result.ProvisioningUri;
+                    
+                    // Generate QR code using a public QR code API
+                    qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrCodeUrl)}";
+                }
+            }
+            else
+            {
+                errorMessage = "Không thể tạo mã QR. Vui lòng thử lại. / Failed to generate QR code. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi / Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private void CompleteEnrollment()
+    {
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            errorMessage = "Vui lòng tạo mã QR trước / Please generate QR code first";
+            return;
+        }
+        
+        currentStep = Step.Ready;
+        errorMessage = "";
+    }
+    
+    private void InitiateTransfer()
+    {
+        // Validate input
+        if (string.IsNullOrEmpty(fromAccount) || string.IsNullOrEmpty(toAccount))
+        {
+            errorMessage = "Vui lòng điền đầy đủ thông tin tài khoản / Please fill in all account information";
+            return;
+        }
+        
+        if (amount <= 0)
+        {
+            errorMessage = "Số tiền phải lớn hơn 0 / Amount must be greater than 0";
+            return;
+        }
+        
+        currentStep = Step.VerifyingOtp;
+        otpCode = "";
+        errorMessage = "";
+    }
+    
+    private async Task VerifyAndExecute()
+    {
+        if (string.IsNullOrEmpty(otpCode) || otpCode.Length != 6)
+        {
+            errorMessage = "Vui lòng nhập mã OTP 6 chữ số / Please enter 6-digit OTP code";
+            return;
+        }
+        
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            // Validate OTP
+            var request = new
+            {
+                secret = secretKey,
+                code = otpCode,
+                isTotp = true,
+                digits = 6,
+                step = 30
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await Http.PostAsync("http://localhost:5001/api/otp/validate", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ValidateResponse>(responseContent, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                if (result != null && result.IsValid)
+                {
+                    // OTP is valid - execute the transaction
+                    ExecuteTransaction();
+                }
+                else
+                {
+                    errorMessage = "Mã OTP không chính xác. Vui lòng thử lại. / Invalid OTP code. Please try again.";
+                }
+            }
+            else
+            {
+                errorMessage = "Không thể xác thực OTP. Vui lòng thử lại. / Failed to validate OTP. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi / Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private void ExecuteTransaction()
+    {
+        // Simulate transaction execution
+        transactionId = Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper();
+        transactionTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        
+        currentStep = Step.Success;
+        errorMessage = "";
+    }
+    
+    private void CancelTransaction()
+    {
+        currentStep = Step.Ready;
+        otpCode = "";
+        errorMessage = "";
+    }
+    
+    private void NewTransaction()
+    {
+        currentStep = Step.Ready;
+        fromAccount = "1234567890";
+        toAccount = "0987654321";
+        amount = 1000000;
+        description = "Chuyển tiền / Money transfer";
+        otpCode = "";
+        errorMessage = "";
+    }
+    
+    private async Task CopySecret()
+    {
+        // In a real app, you'd use JS Interop to copy to clipboard
+        await Task.CompletedTask;
+    }
+    
+    private class EnrollResponse
+    {
+        public string Secret { get; set; } = "";
+        public string ProvisioningUri { get; set; } = "";
+        public string QrCodeDataUrl { get; set; } = "";
+    }
+    
+    private class ValidateResponse
+    {
+        public bool IsValid { get; set; }
+        public string Message { get; set; } = "";
+    }
+}
