@@ -37,6 +37,9 @@ namespace PrivacyIdeaServer.Lib.Challenge
     {
         private readonly PrivacyIDEAContext _context;
         private readonly ILogger<ChallengeManager> _logger;
+        
+        // Default challenge expiration time in minutes
+        private const int DEFAULT_CHALLENGE_EXPIRATION_MINUTES = 2;
 
         public ChallengeManager(PrivacyIDEAContext context, ILogger<ChallengeManager> logger)
         {
@@ -211,7 +214,7 @@ namespace PrivacyIdeaServer.Lib.Challenge
         /// </summary>
         private Dictionary<string, object> ChallengeToDictionary(Models.Database.Challenge challenge)
         {
-            return new Dictionary<string, object>
+            var result = new Dictionary<string, object>
             {
                 ["id"] = challenge.Id,
                 ["serial"] = challenge.Serial ?? string.Empty,
@@ -219,12 +222,23 @@ namespace PrivacyIdeaServer.Lib.Challenge
                 ["challenge"] = challenge.Challenge1 ?? string.Empty,
                 ["data"] = challenge.Data ?? string.Empty,
                 ["session"] = challenge.Session ?? string.Empty,
-                ["timestamp"] = challenge.Timestamp ?? DateTime.MinValue,
-                ["received_timestamp"] = challenge.ReceivedTimestamp,
                 ["received_count"] = challenge.ReceivedCount,
                 ["otp_len"] = challenge.OtpLen,
                 ["otp_valid"] = challenge.OtpValid
             };
+            
+            // Only add timestamp if it exists, avoid DateTime.MinValue
+            if (challenge.Timestamp.HasValue)
+            {
+                result["timestamp"] = challenge.Timestamp.Value;
+            }
+            
+            if (challenge.ReceivedTimestamp.HasValue)
+            {
+                result["received_timestamp"] = challenge.ReceivedTimestamp.Value;
+            }
+            
+            return result;
         }
 
         /// <summary>
@@ -256,16 +270,19 @@ namespace PrivacyIdeaServer.Lib.Challenge
         /// <summary>
         /// Check if a challenge is still valid (not expired)
         /// </summary>
-        private bool IsValidChallenge(Models.Database.Challenge challenge)
+        /// <param name="challenge">The challenge to check</param>
+        /// <param name="expirationMinutes">Custom expiration time in minutes. If null, uses default.</param>
+        /// <returns>True if challenge is still valid, false if expired or no timestamp</returns>
+        private bool IsValidChallenge(Models.Database.Challenge challenge, int? expirationMinutes = null)
         {
-            // Simple check: if timestamp is within reasonable time window
-            // This should be enhanced based on expiration policy
-            if (challenge.Timestamp == null)
+            // Challenge must have a timestamp to be valid
+            if (!challenge.Timestamp.HasValue)
                 return false;
 
-            // Default: challenges expire after 2 minutes (120 seconds)
-            var expirationMinutes = 2;
-            var expirationTime = challenge.Timestamp.Value.AddMinutes(expirationMinutes);
+            // Use provided expiration time or default
+            var expirationTime = challenge.Timestamp.Value.AddMinutes(
+                expirationMinutes ?? DEFAULT_CHALLENGE_EXPIRATION_MINUTES);
+            
             return DateTime.UtcNow <= expirationTime;
         }
 
@@ -304,28 +321,20 @@ namespace PrivacyIdeaServer.Lib.Challenge
         /// Delete expired challenges from the challenge table
         /// </summary>
         /// <param name="chunkSize">Delete entries in chunks of the given size to avoid deadlocks</param>
-        /// <param name="ageMinutes">Delete challenge entries older than this many minutes</param>
+        /// <param name="ageMinutes">Delete challenge entries older than this many minutes. If null, uses default expiration time.</param>
         /// <returns>Number of deleted entries</returns>
         public async Task<int> CleanupExpiredChallengesAsync(int? chunkSize = null, int? ageMinutes = null)
         {
-            _logger.LogInformation("Cleaning up expired challenges: age={AgeMinutes} minutes", ageMinutes);
+            _logger.LogInformation("Cleaning up expired challenges: age={AgeMinutes} minutes", 
+                ageMinutes ?? DEFAULT_CHALLENGE_EXPIRATION_MINUTES);
 
             var now = DateTime.UtcNow;
             var query = _context.Challenges.AsQueryable();
 
-            if (ageMinutes.HasValue)
-            {
-                // Delete challenges older than the specified age
-                var cutoff = now.AddMinutes(-ageMinutes.Value);
-                query = query.Where(c => c.Timestamp < cutoff);
-            }
-            else
-            {
-                // Delete expired challenges (older than 2 minutes by default)
-                var defaultExpiration = 2;
-                var cutoff = now.AddMinutes(-defaultExpiration);
-                query = query.Where(c => c.Timestamp < cutoff);
-            }
+            // Use provided age or default expiration time
+            var effectiveAgeMinutes = ageMinutes ?? DEFAULT_CHALLENGE_EXPIRATION_MINUTES;
+            var cutoff = now.AddMinutes(-effectiveAgeMinutes);
+            query = query.Where(c => c.Timestamp < cutoff);
 
             int totalDeleted = 0;
 
