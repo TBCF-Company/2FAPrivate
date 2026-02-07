@@ -200,6 +200,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
                         }
 
                         // Update last authentication timestamp
+                        // NOTE: This cast to int will overflow in 2038. Consider migrating Token.Count to long.
                         _token.Count = (int)testTime;
                         await _context.SaveChangesAsync();
                         

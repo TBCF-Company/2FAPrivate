@@ -345,7 +345,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
         /// <summary>
         /// Generates a random OTP key
         /// </summary>
-        protected new string GenerateOtpKey(int length = 20)
+        protected string GenerateOtpKey(int length = 20)
         {
             var key = new byte[length];
             using (var rng = RandomNumberGenerator.Create())
@@ -396,7 +396,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
             {
                 _token.FailCount = 0;
             }
-            await base.SetOtpKeyAsync(otpKey, resetFailCount);
+            await SaveAsync();
         }
 
         /// <summary>
