@@ -277,6 +277,8 @@ export class PostgresDeviceManagementService {
     );
   }
   
+  // Helper method to map database row to DeviceInfo object
+  // Note: This is synchronous as it only performs object mapping (no async operations)
   private mapRowToDeviceInfo(row: any): DeviceInfo {
     return {
       deviceId: row.device_id,
