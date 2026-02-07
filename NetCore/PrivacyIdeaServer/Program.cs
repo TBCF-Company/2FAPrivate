@@ -13,12 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
-// Configure database context (using SQLite for simplicity, can be changed to any EF-supported DB)
+// Configure database context (using PostgreSQL)
 builder.Services.AddDbContext<PrivacyIDEAContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-        ?? "Data Source=privacyidea.db";
-    options.UseSqlite(connectionString);
+        ?? throw new InvalidOperationException("Database connection string 'DefaultConnection' not found. Please configure in appsettings.json or environment variables.");
+    options.UseNpgsql(connectionString);
 });
 
 // Add HTTP client for making requests to remote privacyIDEA servers
