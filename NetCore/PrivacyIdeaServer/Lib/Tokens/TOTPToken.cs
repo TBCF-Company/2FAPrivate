@@ -245,7 +245,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
             if (!string.IsNullOrEmpty(pin))
             {
                 // PIN is set, check it
-                if (passw.StartsWith(pin))
+                if (passw.Length >= pin.Length && passw.StartsWith(pin))
                 {
                     pinMatch = true;
                     otp = passw.Substring(pin.Length);

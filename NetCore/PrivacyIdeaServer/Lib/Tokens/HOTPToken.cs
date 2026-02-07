@@ -261,7 +261,7 @@ namespace PrivacyIdeaServer.Lib.Tokens
             if (!string.IsNullOrEmpty(pin))
             {
                 // PIN is set, check it
-                if (passw.StartsWith(pin))
+                if (passw.Length >= pin.Length && passw.StartsWith(pin))
                 {
                     pinMatch = true;
                     otp = passw.Substring(pin.Length);
@@ -401,11 +401,15 @@ namespace PrivacyIdeaServer.Lib.Tokens
 
         /// <summary>
         /// Gets the PIN for this token (empty if no PIN is set)
+        /// NOTE: PIN functionality is not yet fully implemented. The Token model
+        /// stores PIN in encrypted form (UserPin) or as a hash (PinHash), but
+        /// decryption/validation logic needs to be implemented in a future update.
+        /// Currently returns empty string, meaning all tokens operate without PIN.
         /// </summary>
         protected async Task<string> GetPinAsync()
         {
             // For now, return empty string as PIN is stored in UserPin (encrypted) or PinHash
-            // TODO: Implement proper PIN decryption when needed
+            // TODO: Implement proper PIN decryption/validation
             await Task.CompletedTask;
             return string.Empty;
         }

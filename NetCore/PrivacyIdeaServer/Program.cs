@@ -17,7 +17,7 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<PrivacyIDEAContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-        ?? "Host=localhost;Database=privacyidea;Username=postgres;Password=postgres;Port=5432";
+        ?? throw new InvalidOperationException("Database connection string 'DefaultConnection' not found. Please configure in appsettings.json or environment variables.");
     options.UseNpgsql(connectionString);
 });
 
