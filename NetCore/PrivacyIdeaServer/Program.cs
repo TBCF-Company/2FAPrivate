@@ -34,7 +34,8 @@ builder.Services.AddHttpClient("NoTlsValidation")
 // Register services with Dependency Injection
 builder.Services.AddScoped<IPrivacyIDEAServerService, PrivacyIDEAServerService>();
 builder.Services.AddScoped<IOtpTokenService, OtpTokenService>();
-builder.Services.AddSingleton<IDeviceManagementService, DeviceManagementService>();
+// Use database-backed device management service for persistence
+builder.Services.AddScoped<IDeviceManagementService, DatabaseDeviceManagementService>();
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
