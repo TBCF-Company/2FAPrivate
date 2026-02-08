@@ -4,11 +4,25 @@ A comprehensive two-factor authentication solution with device management across
 
 ## Overview
 
-This solution provides a complete 2FA system with device management capabilities:
+This solution provides a complete 2FA system with device management capabilities and **database persistence for recovery scenarios**:
 
 - **Flutter SDK**: Mobile device implementation with device ID detection, OTP generation, and activation flow
-- **.NET Core Package**: Reusable library for Blazor and ASP.NET Core applications
+- **.NET Core Package**: Reusable library for Blazor and ASP.NET Core applications **with database persistence**
 - **NodeJS Package**: TypeScript package for NodeJS/Express/NestJS applications
+
+## Key Features
+
+✅ **Recovery-Safe Device Management**: Device information persists to database, preventing data loss during:
+- Application restarts
+- Server recovery operations
+- Deployment updates
+- Database backups and restores
+
+✅ **Secure Activation Flow**: OTP-based device activation with 5-minute expiration
+
+✅ **Cross-Platform Support**: Works seamlessly across mobile (Flutter), web (Blazor), and backend (NodeJS/C#)
+
+✅ **Production-Ready**: Includes database migrations, transaction support, and cleanup mechanisms
 
 ## Architecture
 
@@ -322,26 +336,65 @@ Deactivate a device.
 
 ## Storage
 
-All implementations use in-memory storage by default for simplicity. For production:
+### .NET: Database Persistence (Implemented)
 
-### .NET: Use Entity Framework Core
-```csharp
-public class DeviceDbContext : DbContext
-{
-    public DbSet<DeviceInfo> Devices { get; set; }
-}
-```
+The .NET implementation now includes **full database persistence** using Entity Framework Core and PostgreSQL.
 
-### NodeJS: Use MongoDB/PostgreSQL
+**Database-Backed Service**: `DatabaseDeviceManagementService`
+- Persists all device information to database
+- Survives application restarts and recovery scenarios
+- Uses existing `PrivacyIDEAContext` database
+
+**Setup Instructions**:
+
+1. Apply the database migration:
+   ```bash
+   cd NetCore/PrivacyIdeaServer/Migrations
+   psql -U your_username -d privacyidea -f 001_AddDeviceManagement.sql
+   ```
+
+2. Service is automatically registered in `Program.cs`:
+   ```csharp
+   builder.Services.AddScoped<IDeviceManagementService, DatabaseDeviceManagementService>();
+   ```
+
+3. Database tables created:
+   - `device` - Stores all registered devices with activation status
+   - `pending_device_activation` - Stores temporary activation requests (5-minute expiry)
+
+**Features**:
+- ✅ Full transaction support
+- ✅ Automatic cleanup of expired activations via `CleanupExpiredActivationsAsync()`
+- ✅ Indexed queries for optimal performance
+- ✅ Recovery-safe - no data loss on restart
+
+See [Migration README](NetCore/PrivacyIdeaServer/Migrations/README.md) for detailed schema information.
+
+### NodeJS: Database Integration Guide
+
+The NodeJS package provides in-memory storage by default, but includes comprehensive database integration guides:
+
+**Supported Databases**:
+- MongoDB
+- PostgreSQL  
+- TypeORM (multi-database support)
+
+**Implementation Guide**: See [DATABASE_INTEGRATION.md](nodejs_package/DATABASE_INTEGRATION.md)
+
+**Quick Example** (PostgreSQL):
 ```typescript
-class DatabaseDeviceManagementService extends DeviceManagementService {
-  async getDeviceInfo(deviceId: string) {
-    return await this.database.findOne({ deviceId });
-  }
-}
+import { PostgresDeviceManagementService } from './PostgresDeviceManagementService';
+
+const deviceService = new PostgresDeviceManagementService(
+  'postgresql://user:password@localhost:5432/privacyidea'
+);
 ```
 
-### Flutter: Already uses SharedPreferences for local storage
+Complete implementations with connection pooling, transactions, and error handling are provided in the integration guide.
+
+### Flutter: Local Storage
+
+Flutter SDK uses SharedPreferences for device-local storage - data persists across app restarts but not device resets.
 
 ## Testing
 

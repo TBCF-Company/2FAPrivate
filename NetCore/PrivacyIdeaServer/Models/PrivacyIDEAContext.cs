@@ -106,6 +106,10 @@ namespace PrivacyIdeaServer.Models
         public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
         public DbSet<Subscription> Subscriptions { get; set; } = null!;
 
+        // Device management for 2FA
+        public DbSet<Device> Devices { get; set; } = null!;
+        public DbSet<PendingDeviceActivation> PendingDeviceActivations { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
