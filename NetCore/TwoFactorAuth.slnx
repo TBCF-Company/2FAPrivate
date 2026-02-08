@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="BlazorWebApp/BlazorWebApp.csproj" />
   <Project Path="PrivacyIdeaServer/PrivacyIdeaServer.csproj" />
+  <Project Path="TwoFactorAuth.Core/TwoFactorAuth.Core.csproj" />
 </Solution>
