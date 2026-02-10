@@ -348,8 +348,11 @@ class _TradingScreenState extends State<TradingScreen> {
   final _amountController = TextEditingController();
   final _stockCodeController = TextEditingController();
   
-  // In production, this should be retrieved from secure server storage
-  final String _userSecret = 'JBSWY3DPEHPK3PXP'; // Example secret
+  // ⚠️ WARNING: In production, NEVER hardcode the secret in the app!
+  // The secret should be retrieved securely from your backend server after authentication.
+  // This is a placeholder for demonstration purposes only.
+  // Example: final _userSecret = await yourApi.getUserSecret();
+  final String _userSecret = 'JBSWY3DPEHPK3PXP'; // ⚠️ EXAMPLE ONLY - DO NOT USE IN PRODUCTION!
   
   String? _currentOtp;
   int _remainingTime = 30;
