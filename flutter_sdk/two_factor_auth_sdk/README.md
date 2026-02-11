@@ -2,6 +2,8 @@
 
 A Flutter SDK for implementing two-factor authentication with device management capabilities. This SDK provides device identification, registration, whitelist management, and OTP-based device activation.
 
+**[Tài liệu tiếng Việt](README_VI.md)** | [English Documentation](README.md)
+
 ## Features
 
 - 🔐 **Device Identification**: Get unique device IDs for Android and iOS
@@ -11,6 +13,7 @@ A Flutter SDK for implementing two-factor authentication with device management 
 - 🚀 **Device Activation**: OTP-based device activation flow
 - 💾 **Local Storage**: Persist device information and whitelist
 - 🌐 **API Integration**: Optional integration with backend API
+- 💼 **Transaction Authentication**: Specialized manager for stock trading and financial apps
 
 ## Installation
 
@@ -166,6 +169,10 @@ if (hasAccess) {
 ```
 
 ### 4. Complete Example
+
+For a complete stock trading application example with Vietnamese UI, see:
+- **Stock Trading Example**: [example/stock_trading_example.dart](example/stock_trading_example.dart)
+- **Example Documentation**: [example/README.md](example/README.md)
 
 ```dart
 import 'package:flutter/material.dart';
