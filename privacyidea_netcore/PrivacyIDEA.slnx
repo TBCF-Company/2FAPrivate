@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PrivacyIDEA.Api/PrivacyIDEA.Api.csproj" />
+    <Project Path="src/PrivacyIDEA.Cli/PrivacyIDEA.Cli.csproj" />
+    <Project Path="src/PrivacyIDEA.Core/PrivacyIDEA.Core.csproj" />
+    <Project Path="src/PrivacyIDEA.Domain/PrivacyIDEA.Domain.csproj" />
+    <Project Path="src/PrivacyIDEA.Infrastructure/PrivacyIDEA.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PrivacyIDEA.Core.Tests/PrivacyIDEA.Core.Tests.csproj" />
+  </Folder>
+</Solution>
