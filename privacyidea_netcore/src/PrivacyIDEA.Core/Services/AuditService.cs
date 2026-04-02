@@ -26,6 +26,21 @@ public class AuditService : IAuditService
         _logger = logger;
     }
 
+    public async Task LogAsync(string action, bool success, string? user = null, string? realm = null, 
+                               string? serial = null, string? tokenType = null, string? info = null)
+    {
+        await LogAsync(new AuditLogRequest
+        {
+            Action = action,
+            Success = success,
+            User = user,
+            Realm = realm,
+            Serial = serial,
+            TokenType = tokenType,
+            Info = info
+        });
+    }
+
     public async Task LogAsync(AuditLogRequest request)
     {
         try

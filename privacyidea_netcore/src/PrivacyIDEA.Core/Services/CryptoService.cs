@@ -97,6 +97,16 @@ public class CryptoService : ICryptoService
         return VerifyArgon2Hash(password, hash);
     }
 
+    public string HashArgon2(string input)
+    {
+        return HashWithArgon2(input);
+    }
+
+    public bool VerifyArgon2(string input, string hash)
+    {
+        return VerifyArgon2Hash(input, hash);
+    }
+
     private string HashWithArgon2(string input)
     {
         var salt = GenerateRandomBytes(16);

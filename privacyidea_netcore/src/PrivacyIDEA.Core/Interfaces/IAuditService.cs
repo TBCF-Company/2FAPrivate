@@ -9,7 +9,13 @@ namespace PrivacyIDEA.Core.Interfaces;
 public interface IAuditService
 {
     /// <summary>
-    /// Log an audit entry
+    /// Log an audit entry (simplified)
+    /// </summary>
+    Task LogAsync(string action, bool success, string? user = null, string? realm = null, 
+                  string? serial = null, string? tokenType = null, string? info = null);
+
+    /// <summary>
+    /// Log an audit entry with full details
     /// </summary>
     Task LogAsync(AuditLogRequest request);
 

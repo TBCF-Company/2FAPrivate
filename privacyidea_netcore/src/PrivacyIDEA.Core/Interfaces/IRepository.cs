@@ -87,6 +87,32 @@ public interface IChallengeRepository
 }
 
 /// <summary>
+/// Repository interface for Admin entity
+/// </summary>
+public interface IAdminRepository
+{
+    Task<Admin?> GetByUsernameAsync(string username);
+    Task<Admin?> GetByIdAsync(int id);
+    Task<IEnumerable<Admin>> GetAllAsync();
+    Task<Admin> AddAsync(Admin admin);
+    Task UpdateAsync(Admin admin);
+    Task DeleteAsync(Admin admin);
+}
+
+/// <summary>
+/// Generic repository interface
+/// </summary>
+public interface IRepository<T> where T : class
+{
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate);
+    Task<T> AddAsync(T entity);
+    void Update(T entity);
+    void Remove(T entity);
+}
+
+/// <summary>
 /// Unit of Work interface
 /// </summary>
 public interface IUnitOfWork
@@ -97,5 +123,7 @@ public interface IUnitOfWork
     IPolicyRepository Policies { get; }
     IAuditRepository Audit { get; }
     IChallengeRepository Challenges { get; }
+    IAdminRepository Admins { get; }
+    IRepository<T> Repository<T>() where T : class;
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

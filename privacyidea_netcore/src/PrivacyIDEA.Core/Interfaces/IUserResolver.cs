@@ -17,6 +17,11 @@ public interface IUserResolver
     string DisplayName { get; }
 
     /// <summary>
+    /// Whether this resolver supports user modification
+    /// </summary>
+    bool IsEditable { get; }
+
+    /// <summary>
     /// Initialize the resolver with configuration
     /// </summary>
     void Initialize(Domain.Entities.Resolver resolver, Dictionary<string, string> config);
@@ -27,9 +32,19 @@ public interface IUserResolver
     Task<ResolvedUser?> GetUserAsync(string userId);
 
     /// <summary>
+    /// Get user ID by username
+    /// </summary>
+    Task<string?> GetUserIdAsync(string username);
+
+    /// <summary>
     /// Search users with pattern
     /// </summary>
     Task<IEnumerable<ResolvedUser>> SearchUsersAsync(string searchPattern, int maxResults = 100);
+
+    /// <summary>
+    /// Get users with search parameters
+    /// </summary>
+    Task<IEnumerable<UserInfo>> GetUsersAsync(Dictionary<string, string> searchParams);
 
     /// <summary>
     /// Authenticate user with password
@@ -45,6 +60,21 @@ public interface IUserResolver
     /// Get user's attributes
     /// </summary>
     Task<Dictionary<string, string>> GetUserAttributesAsync(string userId);
+
+    /// <summary>
+    /// Add a new user (for editable resolvers)
+    /// </summary>
+    Task<string> AddUserAsync(Dictionary<string, string> attributes);
+
+    /// <summary>
+    /// Update user attributes (for editable resolvers)
+    /// </summary>
+    Task<bool> UpdateUserAsync(string userId, Dictionary<string, string> attributes);
+
+    /// <summary>
+    /// Delete a user (for editable resolvers)
+    /// </summary>
+    Task<bool> DeleteUserAsync(string userId);
 
     /// <summary>
     /// Test the resolver connection
@@ -85,6 +115,8 @@ public class UserSearchFilter
     public string? GivenName { get; set; }
     public string? Surname { get; set; }
     public string? UserId { get; set; }
+    public string? Realm { get; set; }
+    public string? Resolver { get; set; }
     public Dictionary<string, string>? CustomAttributes { get; set; }
 }
 

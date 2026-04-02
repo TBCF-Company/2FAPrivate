@@ -48,6 +48,13 @@ public abstract class TokenClassBase : ITokenClass
 
     public abstract Task<bool> CheckOtpAsync(string otp, int? counter = null, int? window = null);
 
+    public virtual bool CheckOtp(string otp, Token token)
+    {
+        // Synchronous wrapper - uses the token entity passed in
+        Initialize(token);
+        return CheckOtpAsync(otp).GetAwaiter().GetResult();
+    }
+
     public virtual async Task<bool> CheckPinAsync(string pin)
     {
         if (TokenEntity == null || string.IsNullOrEmpty(TokenEntity.PinHash))

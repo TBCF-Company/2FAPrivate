@@ -81,13 +81,38 @@ public class PolicyService : IPolicyService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<Policy>> GetPoliciesAsync(string? scope = null, bool? active = null)
+    public async Task<IEnumerable<Policy>> GetPoliciesAsync(string? scope = null, bool? active = null, string? realm = null, string? user = null)
     {
+        IEnumerable<Policy> policies;
+        
         if (!string.IsNullOrEmpty(scope))
         {
-            return await _policyRepository.GetByScopeAsync(scope.ToLower(), active);
+            policies = await _policyRepository.GetByScopeAsync(scope.ToLower(), active);
         }
-        return await _policyRepository.GetAllAsync(active);
+        else
+        {
+            policies = await _policyRepository.GetAllAsync(active);
+        }
+
+        // Filter by realm if provided
+        if (!string.IsNullOrEmpty(realm))
+        {
+            policies = policies.Where(p => 
+                string.IsNullOrEmpty(p.Realm) || 
+                p.Realm.Split(',').Select(r => r.Trim()).Contains(realm, StringComparer.OrdinalIgnoreCase));
+        }
+
+        // Filter by user if provided
+        if (!string.IsNullOrEmpty(user))
+        {
+            policies = policies.Where(p => 
+                string.IsNullOrEmpty(p.User) || 
+                p.User.Split(',').Select(u => u.Trim()).Any(u => 
+                    u.Equals(user, StringComparison.OrdinalIgnoreCase) || 
+                    (u.Contains('*') && Regex.IsMatch(user, "^" + Regex.Escape(u).Replace("\\*", ".*") + "$", RegexOptions.IgnoreCase))));
+        }
+
+        return policies;
     }
 
     public async Task<Policy?> GetPolicyByNameAsync(string name)

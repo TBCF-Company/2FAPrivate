@@ -42,6 +42,11 @@ public interface ITokenClass
     Task<bool> CheckOtpAsync(string otp, int? counter = null, int? window = null);
 
     /// <summary>
+    /// Check OTP synchronously (for quick validation)
+    /// </summary>
+    bool CheckOtp(string otp, Domain.Entities.Token token);
+
+    /// <summary>
     /// Check only the PIN
     /// </summary>
     Task<bool> CheckPinAsync(string pin);

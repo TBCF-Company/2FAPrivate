@@ -484,11 +484,107 @@ public class ChallengeRepository : IChallengeRepository
 }
 
 /// <summary>
+/// Admin Repository implementation
+/// </summary>
+public class AdminRepository : IAdminRepository
+{
+    private readonly PrivacyIdeaDbContext _context;
+
+    public AdminRepository(PrivacyIdeaDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<Admin?> GetByUsernameAsync(string username)
+    {
+        return await _context.Admins.FirstOrDefaultAsync(a => 
+            a.Username.ToLower() == username.ToLower());
+    }
+
+    public async Task<Admin?> GetByIdAsync(int id)
+    {
+        return await _context.Admins.FirstOrDefaultAsync(a => a.Id == id);
+    }
+
+    public async Task<IEnumerable<Admin>> GetAllAsync()
+    {
+        return await _context.Admins.OrderBy(a => a.Username).ToListAsync();
+    }
+
+    public async Task<Admin> AddAsync(Admin admin)
+    {
+        _context.Admins.Add(admin);
+        await _context.SaveChangesAsync();
+        return admin;
+    }
+
+    public async Task UpdateAsync(Admin admin)
+    {
+        _context.Admins.Update(admin);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(Admin admin)
+    {
+        _context.Admins.Remove(admin);
+        await _context.SaveChangesAsync();
+    }
+}
+
+/// <summary>
+/// Generic Repository implementation
+/// </summary>
+public class Repository<T> : IRepository<T> where T : class
+{
+    private readonly PrivacyIdeaDbContext _context;
+    private readonly DbSet<T> _dbSet;
+
+    public Repository(PrivacyIdeaDbContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<T>();
+    }
+
+    public async Task<T?> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+
+    public async Task<IEnumerable<T>> FindAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.Where(predicate).ToListAsync();
+    }
+
+    public async Task<T> AddAsync(T entity)
+    {
+        _dbSet.Add(entity);
+        await _context.SaveChangesAsync();
+        return entity;
+    }
+
+    public void Update(T entity)
+    {
+        _dbSet.Update(entity);
+    }
+
+    public void Remove(T entity)
+    {
+        _dbSet.Remove(entity);
+    }
+}
+
+/// <summary>
 /// Unit of Work implementation
 /// </summary>
 public class UnitOfWork : IUnitOfWork
 {
     private readonly PrivacyIdeaDbContext _context;
+    private readonly Dictionary<Type, object> _repositories;
 
     public ITokenRepository Tokens { get; }
     public IRealmRepository Realms { get; }
@@ -496,16 +592,30 @@ public class UnitOfWork : IUnitOfWork
     public IPolicyRepository Policies { get; }
     public IAuditRepository Audit { get; }
     public IChallengeRepository Challenges { get; }
+    public IAdminRepository Admins { get; }
 
     public UnitOfWork(PrivacyIdeaDbContext context)
     {
         _context = context;
+        _repositories = new Dictionary<Type, object>();
+        
         Tokens = new TokenRepository(context);
         Realms = new RealmRepository(context);
         Resolvers = new ResolverRepository(context);
         Policies = new PolicyRepository(context);
         Audit = new AuditRepository(context);
         Challenges = new ChallengeRepository(context);
+        Admins = new AdminRepository(context);
+    }
+
+    public IRepository<T> Repository<T>() where T : class
+    {
+        var type = typeof(T);
+        if (!_repositories.ContainsKey(type))
+        {
+            _repositories[type] = new Repository<T>(_context);
+        }
+        return (IRepository<T>)_repositories[type];
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

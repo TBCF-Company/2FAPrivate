@@ -20,6 +20,11 @@ public interface ITokenService
     Task<IEnumerable<Token>> GetTokensForUserAsync(string userId, string? realm = null);
 
     /// <summary>
+    /// Get tokens with filters (simplified for recovery)
+    /// </summary>
+    Task<IEnumerable<TokenInfoDto>> GetTokensAsync(string? user = null, string? realm = null, string? serial = null);
+
+    /// <summary>
     /// Search tokens with filters
     /// </summary>
     Task<PagedResult<Token>> SearchTokensAsync(TokenSearchFilter filter, int page = 1, int pageSize = 15);
@@ -30,14 +35,19 @@ public interface ITokenService
     Task<Token> InitTokenAsync(TokenInitParameters parameters);
 
     /// <summary>
+    /// Initialize a new token (extended result)
+    /// </summary>
+    Task<TokenInitResult> InitTokenAsync(TokenInitRequest request);
+
+    /// <summary>
     /// Delete a token
     /// </summary>
     Task<bool> DeleteTokenAsync(string serial);
 
     /// <summary>
-    /// Enable a token
+    /// Enable or disable a token
     /// </summary>
-    Task<bool> EnableTokenAsync(string serial);
+    Task<bool> EnableTokenAsync(string serial, bool enable = true);
 
     /// <summary>
     /// Disable a token
@@ -127,6 +137,46 @@ public class TokenInitParameters
     public string HashAlgorithm { get; set; } = "sha1";
     public int TimeStep { get; set; } = 30;
     public Dictionary<string, string>? Info { get; set; }
+}
+
+/// <summary>
+/// Token initialization request (for self-registration)
+/// </summary>
+public class TokenInitRequest
+{
+    public string Type { get; set; } = "TOTP";
+    public string? Serial { get; set; }
+    public string? User { get; set; }
+    public string? Realm { get; set; }
+    public string? Description { get; set; }
+    public bool GenerateKey { get; set; } = true;
+    public int OtpLen { get; set; } = 6;
+}
+
+/// <summary>
+/// Token initialization result (for self-registration)
+/// </summary>
+public class TokenInitResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? Serial { get; set; }
+    public string? GoogleUrl { get; set; }
+    public string? OtpAuthUrl { get; set; }
+    public string? QrCode { get; set; }
+}
+
+/// <summary>
+/// Token info DTO for recovery operations
+/// </summary>
+public class TokenInfoDto
+{
+    public string Serial { get; set; } = string.Empty;
+    public string TokenType { get; set; } = string.Empty;
+    public bool Active { get; set; }
+    public string? Description { get; set; }
+    public string? UserId { get; set; }
+    public string? Realm { get; set; }
 }
 
 /// <summary>

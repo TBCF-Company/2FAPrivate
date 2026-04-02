@@ -57,6 +57,16 @@ public interface ICryptoService
     bool VerifyPassword(string password, string hash);
 
     /// <summary>
+    /// Hash using Argon2id
+    /// </summary>
+    string HashArgon2(string input);
+
+    /// <summary>
+    /// Verify Argon2 hash
+    /// </summary>
+    bool VerifyArgon2(string input, string hash);
+
+    /// <summary>
     /// Generate cryptographically secure random bytes
     /// </summary>
     byte[] GenerateRandomBytes(int length);

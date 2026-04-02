@@ -11,7 +11,7 @@ public interface IPolicyService
     /// <summary>
     /// Get all policies
     /// </summary>
-    Task<IEnumerable<Policy>> GetPoliciesAsync(string? scope = null, bool? active = null);
+    Task<IEnumerable<Policy>> GetPoliciesAsync(string? scope = null, bool? active = null, string? realm = null, string? user = null);
 
     /// <summary>
     /// Get policy by name

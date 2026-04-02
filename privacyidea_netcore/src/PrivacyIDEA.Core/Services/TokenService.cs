@@ -151,17 +151,6 @@ public class TokenService : ITokenService
         return true;
     }
 
-    public async Task<bool> EnableTokenAsync(string serial)
-    {
-        var token = await _tokenRepository.GetBySerialAsync(serial);
-        if (token == null) return false;
-
-        token.Active = true;
-        await _tokenRepository.UpdateAsync(token);
-        await _unitOfWork.SaveChangesAsync();
-        return true;
-    }
-
     public async Task<bool> DisableTokenAsync(string serial)
     {
         var token = await _tokenRepository.GetBySerialAsync(serial);
@@ -289,6 +278,127 @@ public class TokenService : ITokenService
         };
 
         return stats;
+    }
+
+    public async Task<IEnumerable<TokenInfoDto>> GetTokensAsync(string? user = null, string? realm = null, string? serial = null)
+    {
+        var filter = new TokenSearchFilter
+        {
+            UserId = user,
+            Realm = realm,
+            Serial = serial
+        };
+        
+        var result = await _tokenRepository.SearchAsync(filter, 1, 1000);
+        
+        return result.Items.Select(t => new TokenInfoDto
+        {
+            Serial = t.Serial,
+            TokenType = t.TokenType,
+            Active = t.Active,
+            Description = t.Description,
+            UserId = t.TokenOwners?.FirstOrDefault()?.UserId,
+            Realm = t.TokenOwners?.FirstOrDefault()?.Realm?.Name
+        });
+    }
+
+    public async Task<TokenInitResult> InitTokenAsync(TokenInitRequest request)
+    {
+        try
+        {
+            var parameters = new TokenInitParameters
+            {
+                Type = request.Type,
+                Serial = request.Serial,
+                UserId = request.User,
+                Realm = request.Realm,
+                Description = request.Description,
+                GenerateKey = request.GenerateKey,
+                OtpLen = request.OtpLen
+            };
+
+            var token = await InitTokenAsync(parameters);
+            
+            // Get decrypted key for QR code generation
+            var key = _cryptoService.DecryptKey(token.KeyEnc ?? "", token.KeyIv ?? "");
+            var base32Key = Base32Encode(key);
+            
+            var googleUrl = $"otpauth://totp/{request.User ?? "user"}?secret={base32Key}&issuer=PrivacyIDEA";
+            
+            return new TokenInitResult
+            {
+                Success = true,
+                Serial = token.Serial,
+                GoogleUrl = googleUrl,
+                OtpAuthUrl = googleUrl,
+                QrCode = GenerateQrCodeBase64(googleUrl)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize token");
+            return new TokenInitResult
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    public async Task<bool> EnableTokenAsync(string serial, bool enable = true)
+    {
+        var token = await _tokenRepository.GetBySerialAsync(serial);
+        if (token == null) return false;
+
+        token.Active = enable;
+        await _tokenRepository.UpdateAsync(token);
+        await _unitOfWork.SaveChangesAsync();
+        return true;
+    }
+
+    private static string Base32Encode(byte[] data)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var result = new System.Text.StringBuilder();
+        
+        var bits = 0;
+        var buffer = 0;
+        
+        foreach (var b in data)
+        {
+            buffer = (buffer << 8) | b;
+            bits += 8;
+            
+            while (bits >= 5)
+            {
+                bits -= 5;
+                result.Append(alphabet[(buffer >> bits) & 0x1F]);
+            }
+        }
+        
+        if (bits > 0)
+        {
+            buffer <<= (5 - bits);
+            result.Append(alphabet[buffer & 0x1F]);
+        }
+        
+        return result.ToString();
+    }
+
+    private static string GenerateQrCodeBase64(string url)
+    {
+        try
+        {
+            using var qrGenerator = new QRCoder.QRCodeGenerator();
+            using var qrCodeData = qrGenerator.CreateQrCode(url, QRCoder.QRCodeGenerator.ECCLevel.Q);
+            using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);
+            var qrCodeBytes = qrCode.GetGraphic(10);
+            return Convert.ToBase64String(qrCodeBytes);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     private static string GenerateSerial(string tokenType)

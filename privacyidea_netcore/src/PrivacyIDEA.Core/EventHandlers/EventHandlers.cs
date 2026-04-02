@@ -566,4 +566,20 @@ public interface IEmailService
 public interface ISmsService
 {
     Task SendAsync(string to, string message);
+    Task<IEnumerable<SmsGatewayInfo>> GetAllGatewaysAsync();
+    Task<SmsGatewayInfo?> GetGatewayAsync(int id);
+    Task<int> CreateGatewayAsync(string name, string provider, Dictionary<string, object> options, string? description = null);
+    Task<bool> DeleteGatewayAsync(string name);
+}
+
+/// <summary>
+/// SMS Gateway info
+/// </summary>
+public class SmsGatewayInfo
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Provider { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public Dictionary<string, object> Options { get; set; } = new();
 }

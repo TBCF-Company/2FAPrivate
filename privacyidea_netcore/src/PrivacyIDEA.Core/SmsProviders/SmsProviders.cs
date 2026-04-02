@@ -486,7 +486,9 @@ public class SmsService : ISmsService
 {
     private readonly ILogger<SmsService> _logger;
     private readonly Dictionary<string, ISmsProvider> _providers = new();
+    private readonly Dictionary<int, SmsGatewayInfo> _gateways = new();
     private string _defaultProvider = "http";
+    private int _nextGatewayId = 1;
 
     public SmsService(ILogger<SmsService> logger, IEnumerable<ISmsProvider> providers)
     {
@@ -526,5 +528,43 @@ public class SmsService : ISmsService
         }
 
         return await provider.SendSmsAsync(to, message);
+    }
+
+    public Task<IEnumerable<SmsGatewayInfo>> GetAllGatewaysAsync()
+    {
+        return Task.FromResult<IEnumerable<SmsGatewayInfo>>(_gateways.Values);
+    }
+
+    public Task<SmsGatewayInfo?> GetGatewayAsync(int id)
+    {
+        _gateways.TryGetValue(id, out var gateway);
+        return Task.FromResult(gateway);
+    }
+
+    public Task<int> CreateGatewayAsync(string name, string provider, Dictionary<string, object> options, string? description = null)
+    {
+        var id = _nextGatewayId++;
+        _gateways[id] = new SmsGatewayInfo
+        {
+            Id = id,
+            Name = name,
+            Provider = provider,
+            Options = options,
+            Description = description
+        };
+        _logger.LogInformation("Created SMS gateway {Name} with provider {Provider}", name, provider);
+        return Task.FromResult(id);
+    }
+
+    public Task<bool> DeleteGatewayAsync(string name)
+    {
+        var gateway = _gateways.Values.FirstOrDefault(g => g.Name == name);
+        if (gateway != null)
+        {
+            _gateways.Remove(gateway.Id);
+            _logger.LogInformation("Deleted SMS gateway {Name}", name);
+            return Task.FromResult(true);
+        }
+        return Task.FromResult(false);
     }
 }

@@ -33,6 +33,14 @@ public class Policy
     [Column("action")]
     public string? Action { get; set; }
 
+    /// <summary>
+    /// Value for the action (if action is key=value format)
+    /// </summary>
+    [NotMapped]
+    public string? Value => Action?.Contains("=") == true 
+        ? Action.Split('=', 2).ElementAtOrDefault(1) 
+        : null;
+
     [Column("realm")]
     public string? Realm { get; set; }
 

@@ -28,11 +28,53 @@ public abstract class ResolverBase : IUserResolver
         Config = config;
     }
 
+    public virtual bool IsEditable => false;
+
     public abstract Task<ResolvedUser?> GetUserAsync(string userId);
     public abstract Task<IEnumerable<ResolvedUser>> SearchUsersAsync(string searchPattern, int maxResults = 100);
     public abstract Task<bool> CheckPasswordAsync(string userId, string password);
     public abstract Task<IEnumerable<string>> GetUserGroupsAsync(string userId);
     public abstract Task<Dictionary<string, string>> GetUserAttributesAsync(string userId);
+
+    public virtual Task<string?> GetUserIdAsync(string username)
+    {
+        // Default: username is userId
+        return Task.FromResult<string?>(username);
+    }
+
+    public virtual async Task<IEnumerable<UserInfo>> GetUsersAsync(Dictionary<string, string> searchParams)
+    {
+        var pattern = searchParams.GetValueOrDefault("username", "*");
+        var resolved = await SearchUsersAsync(pattern);
+        return resolved.Select(r => new UserInfo
+        {
+            Username = r.UserName,
+            UserId = r.UserId,
+            Email = r.Email,
+            GivenName = r.GivenName,
+            Surname = r.Surname,
+            Phone = r.Phone,
+            Mobile = r.Mobile,
+            Description = r.Description,
+            Attributes = r.Attributes,
+            Editable = IsEditable
+        });
+    }
+
+    public virtual Task<string> AddUserAsync(Dictionary<string, string> attributes)
+    {
+        throw new NotSupportedException("This resolver does not support adding users");
+    }
+
+    public virtual Task<bool> UpdateUserAsync(string userId, Dictionary<string, string> attributes)
+    {
+        throw new NotSupportedException("This resolver does not support updating users");
+    }
+
+    public virtual Task<bool> DeleteUserAsync(string userId)
+    {
+        throw new NotSupportedException("This resolver does not support deleting users");
+    }
 
     public virtual Task<bool> TestConnectionAsync()
     {
