@@ -55,11 +55,51 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure Database (using SQLite for development, can be changed)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Data Source=privacyidea.db";
+// Configure Database based on provider setting
+var databaseProvider = builder.Configuration.GetValue<string>("Database:Provider") ?? "SQLite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+
 builder.Services.AddDbContext<PrivacyIdeaDbContext>(options =>
-    options.UseSqlite(connectionString));
+{
+    switch (databaseProvider.ToLowerInvariant())
+    {
+        case "postgresql":
+        case "postgres":
+            var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? connectionString;
+            options.UseNpgsql(pgConnStr, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure(3);
+                npgsqlOptions.CommandTimeout(30);
+            });
+            break;
+
+        case "mysql":
+        case "mariadb":
+            var mysqlConnStr = builder.Configuration.GetConnectionString("MySQL") ?? connectionString;
+            options.UseMySql(mysqlConnStr, ServerVersion.AutoDetect(mysqlConnStr), mysqlOptions =>
+            {
+                mysqlOptions.EnableRetryOnFailure(3);
+                mysqlOptions.CommandTimeout(30);
+            });
+            break;
+
+        case "sqlite":
+        default:
+            var sqliteConnStr = builder.Configuration.GetConnectionString("SQLite") ?? "Data Source=privacyidea.db";
+            options.UseSqlite(sqliteConnStr);
+            break;
+    }
+
+    // Enable detailed errors in development
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
+// Log the database provider being used
+Console.WriteLine($"Database Provider: {databaseProvider}");
 
 // Add JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -134,9 +174,18 @@ app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = Da
 app.MapGet("/version", () => Results.Ok(new { 
     version = "1.0.0", 
     product = "PrivacyIDEA.NET",
-    framework = ".NET 8"
+    framework = ".NET 8",
+    database = databaseProvider
 }))
     .WithName("Version")
+    .WithTags("Info");
+
+// Database info endpoint (admin only in production)
+app.MapGet("/database/info", () => Results.Ok(new { 
+    provider = databaseProvider,
+    configured = !string.IsNullOrEmpty(connectionString)
+}))
+    .WithName("DatabaseInfo")
     .WithTags("Info");
 
 app.Run();
