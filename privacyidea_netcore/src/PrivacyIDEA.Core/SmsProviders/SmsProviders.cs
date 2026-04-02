@@ -593,3 +593,196 @@ public class SmsService : ISmsService
         return Task.FromResult(false);
     }
 }
+
+/// <summary>
+/// Script SMS Provider - executes external script to send SMS
+/// Maps to Python: privacyidea/lib/smsprovider/ScriptSMSProvider.py
+/// </summary>
+public class ScriptSmsProvider : SmsProviderBase
+{
+    private const string ScriptModeBackground = "background";
+    private const string ScriptModeWait = "wait";
+
+    private string _scriptDirectory = "";
+    private string _scriptName = "";
+    private string _mode = ScriptModeBackground;
+
+    public override string Type => "script";
+    public override string DisplayName => "Script SMS Provider";
+
+    public ScriptSmsProvider(ILogger<ScriptSmsProvider> logger) : base(logger)
+    {
+    }
+
+    public override void Initialize(Dictionary<string, string> config)
+    {
+        base.Initialize(config);
+
+        // Default directory for Windows - can be overridden in config
+        _scriptDirectory = GetConfig("directory", @"C:\PrivacyIDEA\scripts");
+        _scriptName = GetConfig("script", "send_sms.ps1");
+        _mode = GetConfig("background", ScriptModeBackground);
+    }
+
+    public override async Task<SmsResult> SendSmsAsync(string phoneNumber, string message)
+    {
+        if (string.IsNullOrEmpty(_scriptName))
+        {
+            return new SmsResult
+            {
+                Success = false,
+                Message = "Script name not configured"
+            };
+        }
+
+        var scriptPath = Path.Combine(_scriptDirectory, _scriptName);
+        
+        if (!File.Exists(scriptPath))
+        {
+            Logger.LogWarning("Script not found: {ScriptPath}", scriptPath);
+            return new SmsResult
+            {
+                Success = false,
+                Message = $"Script not found: {scriptPath}"
+            };
+        }
+
+        try
+        {
+            Logger.LogInformation("Executing SMS script: {ScriptPath} for phone {Phone}", scriptPath, phoneNumber);
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = scriptPath,
+                Arguments = $"\"{phoneNumber}\"",
+                WorkingDirectory = _scriptDirectory,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            // Handle different script types
+            var extension = Path.GetExtension(scriptPath).ToLowerInvariant();
+            if (extension == ".ps1")
+            {
+                startInfo.FileName = "powershell.exe";
+                startInfo.Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\" \"{phoneNumber}\"";
+            }
+            else if (extension == ".py")
+            {
+                startInfo.FileName = "python";
+                startInfo.Arguments = $"\"{scriptPath}\" \"{phoneNumber}\"";
+            }
+            else if (extension == ".bat" || extension == ".cmd")
+            {
+                startInfo.FileName = "cmd.exe";
+                startInfo.Arguments = $"/c \"{scriptPath}\" \"{phoneNumber}\"";
+            }
+            else if (extension == ".sh")
+            {
+                // For WSL or Cygwin on Windows
+                startInfo.FileName = "bash";
+                startInfo.Arguments = $"\"{scriptPath}\" \"{phoneNumber}\"";
+            }
+
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = startInfo;
+            process.Start();
+
+            // Pass message via stdin
+            await process.StandardInput.WriteLineAsync(message);
+            process.StandardInput.Close();
+
+            if (_mode == ScriptModeWait)
+            {
+                await process.WaitForExitAsync();
+                var stdout = await process.StandardOutput.ReadToEndAsync();
+                var stderr = await process.StandardError.ReadToEndAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    Logger.LogWarning("Script failed with exit code {ExitCode}: {Error}", process.ExitCode, stderr);
+                    return new SmsResult
+                    {
+                        Success = false,
+                        Message = $"Script failed with exit code {process.ExitCode}",
+                        Details = new Dictionary<string, object>
+                        {
+                            { "stdout", stdout },
+                            { "stderr", stderr },
+                            { "exitCode", process.ExitCode }
+                        }
+                    };
+                }
+
+                Logger.LogInformation("SMS script completed successfully for {Phone}", phoneNumber);
+                return new SmsResult
+                {
+                    Success = true,
+                    Message = "SMS sent via script",
+                    MessageId = Guid.NewGuid().ToString(),
+                    Details = new Dictionary<string, object>
+                    {
+                        { "stdout", stdout }
+                    }
+                };
+            }
+            else
+            {
+                // Background mode - don't wait
+                Logger.LogInformation("SMS script started in background for {Phone}", phoneNumber);
+                return new SmsResult
+                {
+                    Success = true,
+                    Message = "SMS script started in background",
+                    MessageId = Guid.NewGuid().ToString()
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to execute SMS script {ScriptPath}", scriptPath);
+            return new SmsResult
+            {
+                Success = false,
+                Message = $"Failed to execute script: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Get provider parameters description
+    /// </summary>
+    public static Dictionary<string, object> GetParameters()
+    {
+        return new Dictionary<string, object>
+        {
+            { "options_allowed", false },
+            { "parameters", new Dictionary<string, object>
+                {
+                    { "script", new Dictionary<string, object>
+                        {
+                            { "required", true },
+                            { "description", "Script file name in script directory. Expects phone as parameter and message from stdin." }
+                        }
+                    },
+                    { "directory", new Dictionary<string, object>
+                        {
+                            { "required", false },
+                            { "description", "Directory containing SMS scripts" }
+                        }
+                    },
+                    { "background", new Dictionary<string, object>
+                        {
+                            { "required", false },
+                            { "description", "Execution mode: 'background' (default) or 'wait'" },
+                            { "values", new[] { ScriptModeBackground, ScriptModeWait } }
+                        }
+                    }
+                }
+            }
+        };
+    }
+}

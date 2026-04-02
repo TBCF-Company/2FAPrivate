@@ -780,7 +780,7 @@ public class KeycloakResolver : ResolverBase
         }
     }
 
-    public override async Task<ResolvedUser?> GetUserByNameAsync(string userName)
+    public async Task<ResolvedUser?> GetUserByNameAsync(string userName)
     {
         if (!await EnsureAuthenticatedAsync())
             return null;
@@ -843,7 +843,7 @@ public class KeycloakResolver : ResolverBase
         return users;
     }
 
-    public override async Task<bool> AuthenticateUserAsync(string userId, string password)
+    public override async Task<bool> CheckPasswordAsync(string userId, string password)
     {
         try
         {
