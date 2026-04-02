@@ -110,4 +110,6 @@ public class Token
     public virtual ICollection<TokenInfo> TokenInfos { get; set; } = new List<TokenInfo>();
     public virtual ICollection<TokenOwner> TokenOwners { get; set; } = new List<TokenOwner>();
     public virtual ICollection<TokenRealm> TokenRealms { get; set; } = new List<TokenRealm>();
+    public virtual ICollection<TokenTokenGroup> TokenGroups { get; set; } = new List<TokenTokenGroup>();
+    public virtual ICollection<TokenContainerToken> Containers { get; set; } = new List<TokenContainerToken>();
 }

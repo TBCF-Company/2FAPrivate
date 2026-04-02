@@ -126,6 +126,12 @@ builder.Services.AddSingleton<ISmtpService, SmtpService>();
 builder.Services.AddSingleton<IRadiusService, RadiusService>();
 builder.Services.AddSingleton<IMachineService, MachineService>();
 
+// Register Additional Services (Phase 24)
+builder.Services.AddScoped<ICAConnectorService, CAConnectorService>();
+builder.Services.AddScoped<ITokenGroupService, TokenGroupService>();
+builder.Services.AddScoped<IContainerService, ContainerService>();
+builder.Services.AddScoped<IMonitoringService, MonitoringService>();
+
 // Add HttpClient for external services
 builder.Services.AddHttpClient();
 

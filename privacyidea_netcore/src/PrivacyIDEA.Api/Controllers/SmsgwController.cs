@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrivacyIDEA.Core.Interfaces;
-using PrivacyIDEA.Core.EventHandlers;
+using PrivacyIDEA.Core.SmsProviders;
 using System.ComponentModel.DataAnnotations;
 
 namespace PrivacyIDEA.Api.Controllers;

@@ -125,5 +125,21 @@ public interface IUnitOfWork
     IChallengeRepository Challenges { get; }
     IAdminRepository Admins { get; }
     IRepository<T> Repository<T>() where T : class;
+    
+    /// <summary>
+    /// Get a queryable for the specified entity type
+    /// </summary>
+    IQueryable<T> Query<T>() where T : class;
+    
+    /// <summary>
+    /// Add an entity to the context
+    /// </summary>
+    void Add<T>(T entity) where T : class;
+    
+    /// <summary>
+    /// Delete an entity from the context
+    /// </summary>
+    void Delete<T>(T entity) where T : class;
+    
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

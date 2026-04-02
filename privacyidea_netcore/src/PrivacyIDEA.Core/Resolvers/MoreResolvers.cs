@@ -665,3 +665,366 @@ public class FileResolver : ResolverBase
         return Task.FromResult(_users.Count);
     }
 }
+
+/// <summary>
+/// Keycloak User Resolver
+/// Maps to Python: privacyidea/lib/resolvers/KeycloakResolver.py
+/// Red Hat SSO / Keycloak identity management
+/// </summary>
+public class KeycloakResolver : ResolverBase
+{
+    public override string Type => "keycloak";
+    public override string DisplayName => "Keycloak Resolver";
+
+    private string _baseUrl = "";
+    private string _realm = "";
+    private string _clientId = "admin-cli";
+    private string _adminUsername = "";
+    private string _adminPassword = "";
+    private string? _accessToken;
+    private DateTime _tokenExpiry = DateTime.MinValue;
+    private readonly HttpClient _httpClient;
+
+    // Attribute mappings
+    private readonly Dictionary<string, string> _piToKeycloak = new()
+    {
+        { "username", "username" },
+        { "userid", "id" },
+        { "givenname", "firstName" },
+        { "surname", "lastName" },
+        { "email", "email" }
+    };
+
+    private readonly Dictionary<string, string> _keycloakToPi;
+
+    public KeycloakResolver(ILogger<KeycloakResolver> logger, HttpClient? httpClient = null) : base(logger)
+    {
+        _httpClient = httpClient ?? new HttpClient();
+        _keycloakToPi = _piToKeycloak.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+    }
+
+    public override void Initialize(Resolver resolver, Dictionary<string, string> config)
+    {
+        base.Initialize(resolver, config);
+
+        _baseUrl = GetConfigValue("Endpoint", "http://localhost:8080").TrimEnd('/');
+        _realm = GetConfigValue("realm", "master");
+        _clientId = GetConfigValue("clientId", "admin-cli");
+        _adminUsername = GetConfigValue("adminUsername", "");
+        _adminPassword = GetConfigValue("adminPassword", "");
+    }
+
+    private async Task<bool> EnsureAuthenticatedAsync()
+    {
+        if (!string.IsNullOrEmpty(_accessToken) && DateTime.UtcNow < _tokenExpiry)
+            return true;
+
+        try
+        {
+            var tokenUrl = $"{_baseUrl}/realms/{_realm}/protocol/openid-connect/token";
+            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "grant_type", "password" },
+                { "client_id", _clientId },
+                { "username", _adminUsername },
+                { "password", _adminPassword }
+            });
+
+            var response = await _httpClient.PostAsync(tokenUrl, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogError("Keycloak authentication failed: {Status}", response.StatusCode);
+                return false;
+            }
+
+            var tokenData = await response.Content.ReadAsStringAsync();
+            var json = System.Text.Json.JsonDocument.Parse(tokenData);
+            
+            _accessToken = json.RootElement.GetProperty("access_token").GetString();
+            var expiresIn = json.RootElement.GetProperty("expires_in").GetInt32();
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 30); // 30 second buffer
+
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error authenticating with Keycloak");
+            return false;
+        }
+    }
+
+    public override async Task<ResolvedUser?> GetUserAsync(string userId)
+    {
+        if (!await EnsureAuthenticatedAsync())
+            return null;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users/{Uri.EscapeDataString(userId)}";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var userData = System.Text.Json.JsonDocument.Parse(content);
+            return MapKeycloakUserToResolvedUser(userData.RootElement);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting user {UserId} from Keycloak", userId);
+            return null;
+        }
+    }
+
+    public override async Task<ResolvedUser?> GetUserByNameAsync(string userName)
+    {
+        if (!await EnsureAuthenticatedAsync())
+            return null;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users?username={Uri.EscapeDataString(userName)}&exact=true";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var users = System.Text.Json.JsonDocument.Parse(content);
+            
+            foreach (var userJson in users.RootElement.EnumerateArray())
+            {
+                return MapKeycloakUserToResolvedUser(userJson);
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting user by name {UserName} from Keycloak", userName);
+            return null;
+        }
+    }
+
+    public override async Task<IEnumerable<ResolvedUser>> SearchUsersAsync(string searchPattern, int maxResults = 100)
+    {
+        var users = new List<ResolvedUser>();
+
+        if (!await EnsureAuthenticatedAsync())
+            return users;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users?search={Uri.EscapeDataString(searchPattern)}&max={maxResults}";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return users;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var usersData = System.Text.Json.JsonDocument.Parse(content);
+            
+            foreach (var userJson in usersData.RootElement.EnumerateArray())
+            {
+                var user = MapKeycloakUserToResolvedUser(userJson);
+                if (user != null)
+                    users.Add(user);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching users in Keycloak");
+        }
+
+        return users;
+    }
+
+    public override async Task<bool> AuthenticateUserAsync(string userId, string password)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await GetUserByNameAsync(userId);
+            if (user == null)
+                return false;
+
+            var tokenUrl = $"{_baseUrl}/realms/{_realm}/protocol/openid-connect/token";
+            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "grant_type", "password" },
+                { "client_id", _clientId },
+                { "username", user.UserName },
+                { "password", password }
+            });
+
+            var response = await _httpClient.PostAsync(tokenUrl, content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error authenticating user {UserId} with Keycloak", userId);
+            return false;
+        }
+    }
+
+    public override async Task<IEnumerable<string>> GetUserGroupsAsync(string userId)
+    {
+        var groups = new List<string>();
+
+        if (!await EnsureAuthenticatedAsync())
+            return groups;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users/{Uri.EscapeDataString(userId)}/groups";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return groups;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var groupsData = System.Text.Json.JsonDocument.Parse(content);
+            
+            foreach (var groupJson in groupsData.RootElement.EnumerateArray())
+            {
+                if (groupJson.TryGetProperty("name", out var name))
+                    groups.Add(name.GetString() ?? "");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting groups for user {UserId} from Keycloak", userId);
+        }
+
+        return groups;
+    }
+
+    public override async Task<Dictionary<string, string>> GetUserAttributesAsync(string userId)
+    {
+        var attributes = new Dictionary<string, string>();
+
+        if (!await EnsureAuthenticatedAsync())
+            return attributes;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users/{Uri.EscapeDataString(userId)}";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return attributes;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var userData = System.Text.Json.JsonDocument.Parse(content);
+            
+            if (userData.RootElement.TryGetProperty("attributes", out var attrs))
+            {
+                foreach (var attr in attrs.EnumerateObject())
+                {
+                    if (attr.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var values = attr.Value.EnumerateArray()
+                            .Select(v => v.GetString() ?? "")
+                            .ToArray();
+                        attributes[attr.Name] = string.Join(",", values);
+                    }
+                    else
+                    {
+                        attributes[attr.Name] = attr.Value.GetString() ?? "";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting attributes for user {UserId} from Keycloak", userId);
+        }
+
+        return attributes;
+    }
+
+    public override async Task<int> GetUserCountAsync()
+    {
+        if (!await EnsureAuthenticatedAsync())
+            return 0;
+
+        try
+        {
+            var url = $"{_baseUrl}/admin/realms/{_realm}/users/count";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return 0;
+
+            var content = await response.Content.ReadAsStringAsync();
+            return int.TryParse(content, out var count) ? count : 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting user count from Keycloak");
+            return 0;
+        }
+    }
+
+    private ResolvedUser? MapKeycloakUserToResolvedUser(System.Text.Json.JsonElement userJson)
+    {
+        try
+        {
+            var user = new ResolvedUser
+            {
+                ResolverName = ResolverEntity?.Name ?? "",
+                Attributes = new Dictionary<string, string>()
+            };
+
+            if (userJson.TryGetProperty("id", out var id))
+                user.UserId = id.GetString() ?? "";
+
+            if (userJson.TryGetProperty("username", out var username))
+                user.UserName = username.GetString() ?? "";
+
+            if (userJson.TryGetProperty("email", out var email))
+                user.Email = email.GetString();
+
+            if (userJson.TryGetProperty("firstName", out var firstName))
+                user.GivenName = firstName.GetString();
+
+            if (userJson.TryGetProperty("lastName", out var lastName))
+                user.Surname = lastName.GetString();
+
+            // Map standard attributes
+            foreach (var (keycloakKey, piKey) in _keycloakToPi)
+            {
+                if (userJson.TryGetProperty(keycloakKey, out var value) && 
+                    value.ValueKind != System.Text.Json.JsonValueKind.Null)
+                {
+                    user.Attributes[piKey] = value.GetString() ?? "";
+                }
+            }
+
+            // Map custom attributes
+            if (userJson.TryGetProperty("attributes", out var attrs))
+            {
+                foreach (var attr in attrs.EnumerateObject())
+                {
+                    if (attr.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var values = attr.Value.EnumerateArray()
+                            .Select(v => v.GetString() ?? "")
+                            .ToArray();
+                        user.Attributes[attr.Name] = string.Join(",", values);
+                    }
+                }
+            }
+
+            return user;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error mapping Keycloak user");
+            return null;
+        }
+    }
+}

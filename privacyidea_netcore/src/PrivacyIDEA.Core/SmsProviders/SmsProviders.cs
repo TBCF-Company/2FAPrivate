@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using PrivacyIDEA.Core.EventHandlers;
 
 namespace PrivacyIDEA.Core.SmsProviders;
 
@@ -477,6 +476,32 @@ public class ConsoleSmsProvider : SmsProviderBase
             MessageId = Guid.NewGuid().ToString()
         });
     }
+}
+
+/// <summary>
+/// SMS Gateway configuration info
+/// </summary>
+public class SmsGatewayInfo
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Provider { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public Dictionary<string, object> Options { get; set; } = new();
+}
+
+/// <summary>
+/// Interface for SMS service
+/// </summary>
+public interface ISmsService
+{
+    void SetDefaultProvider(string providerType);
+    Task SendAsync(string to, string message);
+    Task<SmsResult> SendAsync(string to, string message, string? providerType = null);
+    Task<IEnumerable<SmsGatewayInfo>> GetAllGatewaysAsync();
+    Task<SmsGatewayInfo?> GetGatewayAsync(int id);
+    Task<int> CreateGatewayAsync(string name, string provider, Dictionary<string, object> options, string? description = null);
+    Task<bool> DeleteGatewayAsync(string name);
 }
 
 /// <summary>
