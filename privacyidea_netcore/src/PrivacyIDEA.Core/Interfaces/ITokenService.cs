@@ -151,6 +151,26 @@ public class TokenInitRequest
     public string? Description { get; set; }
     public bool GenerateKey { get; set; } = true;
     public int OtpLen { get; set; } = 6;
+    
+    /// <summary>
+    /// OTP key/seed in hex format (used when GenerateKey = false)
+    /// </summary>
+    public string? OtpKey { get; set; }
+    
+    /// <summary>
+    /// Hash algorithm: sha1, sha256, sha512
+    /// </summary>
+    public string HashAlgorithm { get; set; } = "sha1";
+    
+    /// <summary>
+    /// Number of OTP digits (6 or 8)
+    /// </summary>
+    public int OtpDigits { get; set; } = 6;
+    
+    /// <summary>
+    /// TOTP time step in seconds
+    /// </summary>
+    public int TimeStep { get; set; } = 30;
 }
 
 /// <summary>

@@ -266,6 +266,132 @@ public class CryptoService : ICryptoService
         return (publicKey, privateKey);
     }
 
+    /// <summary>
+    /// Encrypt data using RSA-OAEP with SHA-256
+    /// Used for secure key exchange (e.g., encrypting TOTP seed for mobile clients)
+    /// </summary>
+    public byte[] RsaEncryptOaep(byte[] data, byte[] publicKey)
+    {
+        using var rsa = RSA.Create();
+        rsa.ImportRSAPublicKey(publicKey, out _);
+        return rsa.Encrypt(data, RSAEncryptionPadding.OaepSHA256);
+    }
+
+    /// <summary>
+    /// Encrypt data using RSA-OAEP with SHA-256 (PEM format public key)
+    /// </summary>
+    public byte[] RsaEncryptOaep(byte[] data, string publicKeyPem)
+    {
+        var publicKeyBytes = ImportRsaPublicKeyFromPem(publicKeyPem);
+        return RsaEncryptOaep(data, publicKeyBytes);
+    }
+
+    /// <summary>
+    /// Decrypt data using RSA-OAEP with SHA-256
+    /// </summary>
+    public byte[] RsaDecryptOaep(byte[] ciphertext, byte[] privateKey)
+    {
+        using var rsa = RSA.Create();
+        rsa.ImportRSAPrivateKey(privateKey, out _);
+        return rsa.Decrypt(ciphertext, RSAEncryptionPadding.OaepSHA256);
+    }
+
+    /// <summary>
+    /// Import RSA public key from PEM format
+    /// Supports both "BEGIN PUBLIC KEY" (SPKI) and "BEGIN RSA PUBLIC KEY" formats
+    /// </summary>
+    public byte[] ImportRsaPublicKeyFromPem(string pem)
+    {
+        using var rsa = RSA.Create();
+        
+        // Clean the PEM string
+        var cleanPem = pem.Trim();
+        
+        if (cleanPem.Contains("BEGIN RSA PUBLIC KEY"))
+        {
+            // PKCS#1 format
+            rsa.ImportFromPem(cleanPem);
+        }
+        else if (cleanPem.Contains("BEGIN PUBLIC KEY"))
+        {
+            // SPKI format (X.509 SubjectPublicKeyInfo)
+            rsa.ImportFromPem(cleanPem);
+        }
+        else
+        {
+            // Try to decode as base64 directly (DER format)
+            var keyBytes = Convert.FromBase64String(cleanPem);
+            try
+            {
+                rsa.ImportSubjectPublicKeyInfo(keyBytes, out _);
+            }
+            catch
+            {
+                rsa.ImportRSAPublicKey(keyBytes, out _);
+            }
+        }
+        
+        return rsa.ExportRSAPublicKey();
+    }
+
+    /// <summary>
+    /// Import RSA public key from Base64-encoded format
+    /// Auto-detects SPKI (X.509) or PKCS#1 format
+    /// </summary>
+    public byte[] ImportRsaPublicKeyFromBase64(string base64)
+    {
+        // Remove any whitespace/newlines
+        var cleanBase64 = base64.Replace("\n", "").Replace("\r", "").Replace(" ", "").Trim();
+        
+        // Check if it's PEM format (contains BEGIN/END markers)
+        if (cleanBase64.Contains("BEGIN"))
+        {
+            return ImportRsaPublicKeyFromPem(base64);
+        }
+        
+        var keyBytes = Convert.FromBase64String(cleanBase64);
+        
+        using var rsa = RSA.Create();
+        
+        // Try SPKI format first (more common from browsers/mobile)
+        try
+        {
+            rsa.ImportSubjectPublicKeyInfo(keyBytes, out _);
+            return rsa.ExportRSAPublicKey();
+        }
+        catch
+        {
+            // Fall back to PKCS#1 RSA format
+            rsa.ImportRSAPublicKey(keyBytes, out _);
+            return rsa.ExportRSAPublicKey();
+        }
+    }
+
+    /// <summary>
+    /// Validate RSA public key format and size
+    /// </summary>
+    public (bool isValid, string? error, int keySize) ValidateRsaPublicKey(byte[] publicKey, int minKeySize = 2048)
+    {
+        try
+        {
+            using var rsa = RSA.Create();
+            rsa.ImportRSAPublicKey(publicKey, out _);
+            
+            var keySize = rsa.KeySize;
+            
+            if (keySize < minKeySize)
+            {
+                return (false, $"Key size {keySize} bits is less than minimum required {minKeySize} bits", keySize);
+            }
+            
+            return (true, null, keySize);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Invalid RSA public key: {ex.Message}", 0);
+        }
+    }
+
     public bool SecureCompare(string a, string b)
     {
         var aBytes = Encoding.UTF8.GetBytes(a);

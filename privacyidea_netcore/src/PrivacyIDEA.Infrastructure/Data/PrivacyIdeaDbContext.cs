@@ -19,6 +19,7 @@ public class PrivacyIdeaDbContext : DbContext
     public DbSet<TokenInfo> TokenInfos => Set<TokenInfo>();
     public DbSet<TokenOwner> TokenOwners => Set<TokenOwner>();
     public DbSet<TokenRealm> TokenRealms => Set<TokenRealm>();
+    public DbSet<TokenDeviceBinding> TokenDeviceBindings => Set<TokenDeviceBinding>();
 
     // Token Groups
     public DbSet<TokenGroup> TokenGroups => Set<TokenGroup>();

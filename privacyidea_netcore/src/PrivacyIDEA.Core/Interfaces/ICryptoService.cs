@@ -147,6 +147,37 @@ public interface ICryptoService
     (byte[] publicKey, byte[] privateKey) GenerateRsaKeyPair(int keySize = 2048);
 
     /// <summary>
+    /// Encrypt data using RSA-OAEP with SHA-256
+    /// For secure key exchange (e.g., encrypting TOTP seed for client)
+    /// </summary>
+    byte[] RsaEncryptOaep(byte[] data, byte[] publicKey);
+
+    /// <summary>
+    /// Encrypt data using RSA-OAEP with SHA-256 (PEM format public key)
+    /// </summary>
+    byte[] RsaEncryptOaep(byte[] data, string publicKeyPem);
+
+    /// <summary>
+    /// Decrypt data using RSA-OAEP with SHA-256
+    /// </summary>
+    byte[] RsaDecryptOaep(byte[] ciphertext, byte[] privateKey);
+
+    /// <summary>
+    /// Import RSA public key from PEM format
+    /// </summary>
+    byte[] ImportRsaPublicKeyFromPem(string pem);
+
+    /// <summary>
+    /// Import RSA public key from Base64-encoded DER/SPKI format
+    /// </summary>
+    byte[] ImportRsaPublicKeyFromBase64(string base64);
+
+    /// <summary>
+    /// Validate RSA public key (check format and minimum key size)
+    /// </summary>
+    (bool isValid, string? error, int keySize) ValidateRsaPublicKey(byte[] publicKey, int minKeySize = 2048);
+
+    /// <summary>
     /// Constant-time string comparison
     /// </summary>
     bool SecureCompare(string a, string b);
