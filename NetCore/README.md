@@ -1,6 +1,8 @@
 # PrivacyIDEA Server - .NET Core 8 Port
 
-This is a .NET Core 8 port of the Python privacyIDEA server application from the `privacyidea` folder. It implements the same FA (Two-Factor Authentication) server functionality using ASP.NET Core.
+> 📖 **[Tài liệu Tiếng Việt](TÀI_LIỆU_TIẾNG_VIỆT.md)** | **[Vietnamese Documentation](README_VI.md)**
+
+This is a .NET Core 8 port of the Python privacyIDEA server application from the `privacyidea` folder. It implements the same 2FA (Two-Factor Authentication) server functionality using ASP.NET Core.
 
 ## Overview
 
